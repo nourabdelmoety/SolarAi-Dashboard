@@ -1,0 +1,269 @@
+(Deutscher Wetterdienst) für Bayern
+    · Aktualisiert bei jedem Seitenaufruf · Koordinaten: Regensburg (49.01°N, 12.10°O)
+    · Solarschätzung basiert auf Sonnenscheindauer × 6.4 kWp × 82% Systemeffizienz
+(Flow-Prozessor)
+(Mosquitto · Port 1883)
+(Zeitreihendatenbank · measurement:
+(liest alle 15 min · schreibt Entscheidung zurück zu MQTT)
+(liest aus InfluxDB REST API)
+. Da morgen weniger Sonne erwartet wird, empfiehlt die KI, die Batterie jetzt zu laden — bevor der Netzbezug tagsüber wieder teurer wird.
+. Die KI plant, gespeicherte Energie dann ins Netz einzuspeisen. SOC-Ziel vor dem Fenster: mindestens 75%.
+/ 12.5 kWh
+/ 95°C max
+0.279 kWh/h
+0.3°C/h
+0.3°C/h × 800kg × 4186 J/kg·K
+1 Stunde
+15 min
+16 W/m²
+17.0 kg
+18.4 kWh
+18:00 Uhr
+2 Stunden
+20°C — Kalt / Leer
+24-Stunden-Verlauf
+3+ Tage
+3-Draht + 4.7kΩ Pull-up
+3.5× mehr
+3.8 Tage
+30 min
+32.8 kWh
+35 kWh selbst verbraucht
+390 kWh
+39× SELL · 40× STORE · 17× USE
+40.97 kWh
+42.3 kWh
+45°C — Minimum nutzbar
+64.0°C
+64°C
+64°C — Aktuell ◀
+7-Tage-Übersicht
+75°C — Zieltemperatur
+800L Pufferspeicher
+8:00–14:00 Uhr · Solar→Heizung aktiv
+95°C — Max (Sicherheitsventil)
+96 Entscheidungen
+= 1005 kJ/h =
+= 147.5 MJ =
+= 800 kg × 4186 J/kg·K × (64°C − 20°C)
+Admin-Override öffnen
+Aktivität / Prognose
+Aktuell
+Aktuell (11°C unter Ziel)
+Aktuelle Temperatur
+Aktuelles Wetter & 7-Tage-Prognose — Regensburg, Bayern
+Akzeptieren & Schließen
+Auflösung
+Aus Speicher versorgen
+Außentemperatur & Luftfeuchtigkeit
+BETRIEBSMODUS WÄHLEN
+BMS: JBD-SP04S034 · Zyklenzähler: 142 · Temperatur beim Test: 22°C · SOH: 98.4%
+Batterie + Thermospeicher laden
+Batterie-Check — Kapazitätsmessung
+Benachrichtigungen
+Bestes Verkaufsfenster — 17:00 bis 19:00
+DWD ICON
+Datenfluss-Übersicht
+Dein vollständiger Strombedarf aus dem Netz wäre
+Der Thermospeicher hält mit seiner guten Dämmung (0.3°C/h Verlust) bis morgen Nachmittag problemlos die Zieltemperatur.
+Der integrierte
+Dieses Dashboard
+Dominante KI-Entscheidung je Stunde
+Durchgeführt von: Admin · Dauer: 45 min
+EIGENVERSORGUNG
+ESP32 (6 Sensoren)
+ESP32 → MQTT → InfluxDB → Python KI · 15-Minuten-Intervalle
+Eigenverbrauch.
+Energiemanagement · Süddeutschland
+Entsperren
+Erstinbetriebnahme aller Systemkomponenten. MQTT-Broker, InfluxDB, Node-RED und Python KI-Controller erfolgreich deployed. Erste Testläufe mit simulierten Daten. Alle Sensoren kommunizieren korrekt.
+Finanzübersicht — Dieser Monat (30 Tage)
+Geschätzte Dauer: 2h · Kosten: ~€ 80
+Geschätzte Haltezeit
+Geschätzte Haltezeit:
+Gespart durch Eigenverbrauch
+Gespeicherte Wärmeenergie
+Gut isolierter Tank · entspricht ~0.28 kWh/h Verlust
+Günstig laden — 01:00 bis 04:00 Uhr
+Halbjährliche Reinigung der Solarpanele geplant. Schmutz und Vogelkot können Effizienz um 5–15% reduzieren. Termin mit Dachdecker vereinbaren.
+Heizstufe (aktuell)
+Heute produzierte dein System
+Heutige Entscheidungen, neueste zuerst — mit Klartextbegründung
+Heutiger Solarertrag → Wärme
+Hz
+In der Nacht fallen die Spotpreise auf etwa
+InfluxDB
+Irradianzwert zeigt zwischen 14:22 und 14:35 Uhr unrealistische Spitze von 1450 Lux. Möglicherweise Reflexion durch Vogel oder Schmutzpartikel. Beobachtung fortsetzen.
+Jahr
+Jeder Sensor zeigt: aktueller Messwert · Protokoll · Datenfluss · ob Sensor aktiv speichert oder nur meldet
+KI-Entscheidungsprotokoll
+KI-Entscheidungsprotokoll & Systemstatus
+KI-Zieltemperatur
+KI: SELL
+KRITISCHER SYSTEMALARM
+Kapazität
+Lade Live-Wetterdaten für Regensburg…
+Lade aktuelle Nachrichten von rss2json API...
+Letzter Messwert: 23:59 Uhr · Sensor: DS18B20
+Letzter Service
+Live Energy News — Clean Energy Wire & Partner
+Lux ÷ 120 ≈ W/m²
+MQTT Broker
+MQTT-Reconnect-Logik verbessert. DS18B20 Auslesefehler bei Temperaturen > 80°C behoben. Sampling-Rate von 30s auf 15s erhöht für bessere KI-Grundlage.
+Manuell bis Abbruch
+Markt-News
+Master-Passwort eingeben…
+Master-Passwort erforderlich — manueller Eingriff ins KI-System
+Minimum für Heizung
+Modus jetzt aktivieren →
+Monat
+Morgen Nachmittag steigen die Spotpreise voraussichtlich auf
+Morgen teilweise bewölkt mit Aufheiterungen am Nachmittag. Erwartete Solarproduktion:
+Morgen — Prognose & Handlungsempfehlungen
+Nacht · Solar nicht verfügbar · Wärmeschutz aktiv
+Netto-Vorteil gegenüber dem Netz.
+      Bestes Fenster war um
+Netzausfall erkannt
+Netzunabhängig heute
+Netzunabhängigkeit — Heute
+News (Neu)
+Node-RED
+Nur meldend — Umgebungsdaten fließen in Wetterkorrelation und Systemeffizienzberechnung der KI.
+Nur meldend — misst Lichtstärke (Lux) und konvertiert zu W/m². Daten fließen direkt in die KI-Entscheidung.
+Nächster Service
+OTA-Update über WiFi · Downtime: 12 Sekunden · Rollback-Version gespeichert
+Offene Warnungen
+Open-Meteo
+OpenWeatherMap API
+Physikalische Grundlage
+Plausibilitätsprüfung aller 6 Sensoren. SCT-013 mit Referenz-Multimeter abgeglichen (+0.3% Abweichung, innerhalb Toleranz). PZEM-Zählerstand manuell verifiziert.
+Prognostizierte Ersparnis gegenüber Tagsbezug:
+Prognostizierter Erlös:
+Projekt-Alleinstellungsmerkmal
+Python KI-Controller
+Q = m × c × ΔT
+SELL
+SMARD — Strommarktdaten
+SPEICHERN
+STORE
+Sensor DS18B20 · GPIO 4
+Sensor-Dashboard — 6 aktive Sensoren · ESP32 DevKit v1
+Sensor: BH1750 · GPIO21/22 · I2C · Automatischer Ausreißer-Filter greift ab nächstem Zyklus
+Sensoren
+Sicherheitsabschaltung
+Solar (kW/kWh)
+SolarAI
+SolarAI Controller · 6.4 kWp · 12.5 kWh Batterie · 800L Thermospeicher · Süddeutschland
+SolarAI — Energiemanagement Dashboard v9
+Solarproduktion & Spotpreis — Skalierung wählen
+Solarstrom.
+      Die KI traf
+Speicher > 70% geladen
+Speicherstatus — Echtzeit
+Spotpreis (€/kWh)
+Standby
+Strom ins Netz einspeisen
+Strom ins Netz verkauft, wenn die Spotpreise hoch waren. Durchschnittlich
+Strom selbst produziert und genutzt statt für
+Stündliche Prognose
+Stündliche Prognose — Heute
+System (2)
+System:
+Systemanalyse
+Systemlaufzeit
+Systemstatus — 23:59 Uhr
+Tag
+Tage
+Tank: 800L Pufferspeicher · Dämmstärke: 100mm PU-Schaum · TÜV-Kennzeichen vorhanden
+Teilweise bewölkt
+Temperatur & Solarproduktion je Stunde
+Temperaturverlauf — Heute (24h)
+Thermospeicher
+Thermospeicher Inspektion — Wärmedämmung
+Thermospeicher — 800 Liter Pufferspeicher
+VERBRAUCHEN
+VERKAUFEN
+Verdient durch Einspeisung
+Verlustrate
+Verlustrate:
+Visuelle Inspektion der PU-Schaum-Dämmung. Keine Feuchtigkeitsschäden sichtbar. Verlustrate 0.3°C/h entspricht Spezifikation. Sicherheitsventil getestet — einwandfrei.
+Vollzyklus-Test: 100% → 10% → 100%. Nutzbare Kapazität: 12.3 kWh (Nennwert 12.5 kWh, 98.4%). Alle 16 Zellen innerhalb 20mV Spannungstoleranz. Keine Degradation festgestellt.
+Vor 15 Minuten
+Vor 2 Minuten
+W/m²
+Wartungslog
+Wartungsprotokoll — Systemereignisse & geplante Maßnahmen
+Was du ohne SolarAI bezahlt hättest
+Wechselrichter meldet Übertemperatur (85°C). Sicherheitsabschaltung wurde eingeleitet. Bitte Anlage sofort prüfen!
+Wetter
+Wetterdaten:
+Wetterprognose
+Wo kommen die Daten hin?
+Wärmekapazität:
+als die EEG-Einspeisevergütung von € 0.082.
+aus dem Netz zu beziehen. Entspricht
+bei 0.3°C/h Verlust · 800L · Wärmemenge: 32.8 kWh
+bei 64°C vs. 20°C Umgebung · (4186 J/kg·K × 800L × 44K) / 3.6M
+bis 45°C Minimum · Ziel 75°C · Max 95°C (Sicherheitsventil)
+erzielt —
+gekostet. Tatsächlicher Restbetrag diesen Monat:
+hält thermische Energie für
+in 18 Tagen
+kWh
+sensor_readings
+smard.de
+und verdiente deinen bisher
+      besten Tag:
+vor 12 Tagen
+~ € 1.80
+~ € 7.80
+~22 kWh
+~22 kWh Prognose morgen
+· Bundesnetzagentur · Day-Ahead-Auktion EPEX SPOT · 15-Minuten-Auflösung · Kostenlos & offiziell
+· Kein API-Key · Kein Proxy · Kein CORS-Problem · Direkte Browser-Anfrage
+    · Wettermodell:
+Ø € 0.31/kWh erzielt
+ÜBERSCHREIBUNGSDAUER
+Übersicht
+Überwiegend klar
+— Einspeisung zu
+— eine Kombination mit KI-gesteuertem Energiemanagement, die in Deutschland noch nicht als kommerzielles Produkt erhältlich ist. Die KI entscheidet, wann Solarstrom günstiger als Wärme gespeichert wird, und wann Verkauf ins Netz sinnvoller ist.
+— rund 48% weniger als heute. Temperatur 18–24°C, Wind 3–6 m/s.
+€ 0.14–0.15/kWh
+€ 0.291/kWh
+€ 0.32/kWh
+€ 0.33–0.38/kWh
+€ 0.35/kWh
+€ Einspeisung
+ℹ️
+↑ +8.4 % ggü. gestern
+→ 01:00–04:00 Uhr laden
+→ 17:00–19:00 Uhr verkaufen
+→ Nacht
+──→
+└──→
+■ 45°C
+■ 64°C
+■ 75°C
+■ 95°C
+● Online
+☀ Aktuelle Einstrahlung
+☀ Produziert
+⚙ Admin Override
+⚙ Override
+⚠ Falsches Passwort — Zugriff verweigert
+⚠️
+⚡ KI-Entscheidungen
+⚡ Netzfrequenz
+✓ 94.2 % der Stromrechnung eingespart
+✓ Admin-Zugriff gewährt · Manuelle Steuerung aktiv
+✕ Schließen
+🇩🇪 DE
+🇬🇧 EN
+🌡 Thermospeicher
+🌿 CO₂ vermieden heute
+🏠 Eigenversorgung
+📊 Spotpreisquelle:
+📡 Datenquelle:
+🔋 Batterie (Li-Ion)
+🔋 Netzbezug gespart

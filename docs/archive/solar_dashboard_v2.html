@@ -1,0 +1,1033 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SolarAI — Energiemanagement Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:        #07090e;
+  --surface:   #0e1118;
+  --surface2:  #141820;
+  --surface3:  #1a1f2c;
+  --border:    rgba(255,255,255,0.05);
+  --border2:   rgba(255,255,255,0.09);
+  --border3:   rgba(255,255,255,0.14);
+  --text:      #dde1eb;
+  --text2:     #98a0b4;
+  --muted:     #52596b;
+  --solar:     #f5c300;
+  --solar2:    #fad732;
+  --sell:      #22c55e;
+  --store:     #3b82f6;
+  --use:       #f97316;
+  --warn:      #ef4444;
+  --sell-bg:   rgba(34,197,94,0.1);
+  --store-bg:  rgba(59,130,246,0.1);
+  --use-bg:    rgba(249,115,22,0.1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 15% 0%, rgba(245,195,0,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 100%, rgba(59,130,246,0.04) 0%, transparent 60%);
+}
+
+/* ── HEADER ─────────────────────────────────────────────── */
+header {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 32px;
+  background: rgba(7,9,14,0.88);
+  border-bottom: 1px solid var(--border2);
+  backdrop-filter: blur(16px);
+  flex-wrap: wrap; gap: 12px;
+}
+
+.logo { display: flex; align-items: center; gap: 12px; }
+
+.logo-mark {
+  width: 38px; height: 38px;
+  background: var(--solar);
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 0 24px rgba(245,195,0,0.35), 0 0 60px rgba(245,195,0,0.1);
+}
+
+.logo-name { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+.logo-sub {
+  font-size: 10px; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  letter-spacing: 0.06em; margin-top: 1px;
+}
+
+.header-clock {
+  font-family: 'JetBrains Mono', monospace;
+  text-align: center;
+}
+
+.clock-date { font-size: 11px; color: var(--text2); }
+.clock-time { font-size: 22px; font-weight: 500; color: var(--text); letter-spacing: 0.03em; margin-top: 1px; }
+
+.header-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.ai-badge {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px; padding: 7px 14px;
+  font-size: 12px; font-family: 'JetBrains Mono', monospace;
+}
+
+.pulse { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.pulse.sell { background: var(--sell); animation: glow-sell 2s ease-in-out infinite; }
+.pulse.store { background: var(--store); animation: glow-store 2s ease-in-out infinite; }
+
+@keyframes glow-sell {
+  0%,100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+  50% { box-shadow: 0 0 0 5px rgba(34,197,94,0); }
+}
+@keyframes glow-store {
+  0%,100% { box-shadow: 0 0 0 0 rgba(59,130,246,0.4); }
+  50% { box-shadow: 0 0 0 5px rgba(59,130,246,0); }
+}
+
+.sys-status {
+  font-size: 11px; font-family: 'JetBrains Mono', monospace;
+  color: var(--muted); display: flex; align-items: center; gap: 6px;
+}
+
+/* ── MAIN ────────────────────────────────────────────────── */
+main { max-width: 1440px; margin: 0 auto; padding: 32px 32px 72px; }
+
+/* ── SECTION LABEL ──────────────────────────────────────── */
+.sec-label {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--muted); margin: 36px 0 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.sec-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--border2);
+}
+
+/* ── HERO ────────────────────────────────────────────────── */
+.hero { animation: fadeUp 0.55s ease both; }
+
+.hero-narrative {
+  font-size: 21px; font-weight: 600; line-height: 1.5;
+  color: var(--text); max-width: 860px; margin-bottom: 22px;
+  letter-spacing: -0.2px;
+}
+.n-solar { color: var(--solar); }
+.n-sell  { color: var(--sell); }
+.n-store { color: var(--store); }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+
+@media(max-width:1100px){ .stat-grid{ grid-template-columns: repeat(3,1fr); } }
+@media(max-width:700px) { .stat-grid{ grid-template-columns: 1fr 1fr; } }
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 13px; padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 5px;
+  transition: border-color 0.2s, transform 0.2s;
+  cursor: default;
+}
+.stat-card:hover { border-color: var(--border3); transform: translateY(-2px); }
+
+.stat-lbl {
+  font-size: 9px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--muted); font-family: 'JetBrains Mono', monospace;
+}
+.stat-val {
+  font-size: 26px; font-weight: 700; line-height: 1;
+  font-family: 'JetBrains Mono', monospace;
+}
+.stat-val.c-solar { color: var(--solar); }
+.stat-val.c-sell  { color: var(--sell); }
+.stat-val.c-store { color: var(--store); }
+.stat-val.c-text  { color: var(--text); }
+
+.stat-unit { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+.stat-sub {
+  font-size: 11px; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.stat-sub.pos { color: var(--sell); }
+
+/* ── FINANCIALS ──────────────────────────────────────────── */
+.fin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  animation: fadeUp 0.55s 0.08s ease both;
+}
+
+@media(max-width:900px){ .fin-grid{ grid-template-columns:1fr; } }
+
+.fin-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 26px;
+  position: relative; overflow: hidden;
+  transition: border-color 0.2s;
+}
+.fin-card:hover { border-color: var(--border2); }
+
+.fin-card::after {
+  content: ''; position: absolute;
+  top: 0; left: 0; right: 0; height: 2px;
+}
+.fin-card.earned::after { background: linear-gradient(90deg, var(--sell), transparent 70%); }
+.fin-card.saved::after  { background: linear-gradient(90deg, var(--store), transparent 70%); }
+.fin-card.counter::after { background: linear-gradient(90deg, var(--solar), transparent 70%); }
+
+.fin-lbl {
+  font-size: 9px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--muted); font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 10px;
+}
+
+.fin-big {
+  font-size: 42px; font-weight: 700;
+  font-family: 'JetBrains Mono', monospace; line-height: 1;
+  margin-bottom: 4px;
+}
+.fin-card.earned .fin-big { color: var(--sell); }
+.fin-card.saved  .fin-big { color: var(--store); }
+.fin-card.counter .fin-big { color: var(--solar); }
+
+.fin-desc {
+  font-size: 12px; color: var(--text2); line-height: 1.6;
+  margin-top: 10px;
+}
+
+em { font-style: normal; font-weight: 600; }
+
+.fin-vs {
+  display: flex; align-items: center; gap: 10px; margin-top: 16px;
+  padding-top: 16px; border-top: 1px solid var(--border2);
+}
+
+.was-price {
+  font-size: 20px; font-family: 'JetBrains Mono', monospace;
+  color: var(--muted); text-decoration: line-through;
+  text-decoration-color: var(--warn); text-decoration-thickness: 2px;
+}
+.now-price {
+  font-size: 20px; font-family: 'JetBrains Mono', monospace;
+  color: var(--sell); font-weight: 600;
+}
+.vs-arrow { color: var(--muted); font-size: 14px; }
+
+.savings-badge {
+  margin-top: 10px; display: inline-flex; align-items: center; gap: 6px;
+  background: var(--sell-bg); border: 1px solid rgba(34,197,94,0.15);
+  border-radius: 6px; padding: 5px 10px;
+  font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--sell);
+}
+
+/* ── TIMELINE ─────────────────────────────────────────────── */
+.timeline-wrap { animation: fadeUp 0.55s 0.16s ease both; }
+
+.timeline-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 24px;
+}
+
+.tl-header {
+  display: flex; align-items: center;
+  justify-content: space-between; flex-wrap: wrap; gap: 12px;
+  margin-bottom: 18px;
+}
+
+.tl-title { font-size: 14px; font-weight: 600; }
+
+.legend {
+  display: flex; gap: 18px; flex-wrap: wrap;
+}
+.leg-item {
+  display: flex; align-items: center; gap: 7px;
+  font-size: 11px; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+}
+.leg-line { width: 22px; height: 2px; border-radius: 1px; }
+.leg-dot { width: 9px; height: 9px; border-radius: 50%; }
+
+.chart-box { position: relative; height: 270px; }
+
+/* decision band under chart */
+.band-wrap { margin-top: 10px; }
+.band-title {
+  font-size: 9px; font-family: 'JetBrains Mono', monospace;
+  color: var(--muted); text-transform: uppercase;
+  letter-spacing: 0.1em; margin-bottom: 5px;
+}
+.band {
+  display: grid; grid-template-columns: repeat(24,1fr); gap: 2px; height: 18px;
+}
+.band-seg {
+  border-radius: 3px; font-size: 0;
+  position: relative;
+}
+.band-seg.SELL  { background: var(--sell-bg);  border: 1px solid rgba(34,197,94,0.18); }
+.band-seg.STORE { background: var(--store-bg); border: 1px solid rgba(59,130,246,0.18); }
+.band-seg.USE   { background: var(--use-bg);   border: 1px solid rgba(249,115,22,0.18); }
+
+.band-seg:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--surface3); border: 1px solid var(--border2);
+  border-radius: 5px; padding: 4px 8px;
+  font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text);
+  white-space: nowrap; pointer-events: none; z-index: 10;
+}
+
+.band-hours {
+  display: grid; grid-template-columns: repeat(24,1fr); gap: 2px; margin-top: 4px;
+}
+.band-h-lbl {
+  font-size: 9px; font-family: 'JetBrains Mono', monospace;
+  color: var(--muted); text-align: center;
+}
+
+/* ── MIDDLE GRID ──────────────────────────────────────────── */
+.mid-grid {
+  display: grid; grid-template-columns: 1fr 370px; gap: 12px;
+  animation: fadeUp 0.55s 0.24s ease both;
+}
+
+@media(max-width:1024px){ .mid-grid{ grid-template-columns:1fr; } }
+
+/* DECISION LOG */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 22px;
+}
+.card-title {
+  font-size: 14px; font-weight: 600; margin-bottom: 4px;
+}
+.card-sub {
+  font-size: 11px; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace; margin-bottom: 16px;
+}
+
+.dec-list {
+  display: flex; flex-direction: column; gap: 5px;
+  max-height: 400px; overflow-y: auto;
+}
+.dec-list::-webkit-scrollbar { width: 3px; }
+.dec-list::-webkit-scrollbar-track { background: transparent; }
+.dec-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.dec-row {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 12px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  transition: border-color 0.15s;
+}
+.dec-row:hover { border-color: var(--border3); }
+.dec-row.best { border-color: rgba(245,195,0,0.25); background: rgba(245,195,0,0.04); }
+
+.dec-time {
+  font-size: 11px; font-family: 'JetBrains Mono', monospace;
+  color: var(--muted); min-width: 40px; padding-top: 2px; flex-shrink: 0;
+}
+
+.dec-badge {
+  font-size: 9px; font-weight: 600; font-family: 'JetBrains Mono', monospace;
+  padding: 3px 7px; border-radius: 4px; letter-spacing: 0.05em;
+  min-width: 44px; text-align: center; flex-shrink: 0;
+}
+.dec-badge.SELL  { background: var(--sell-bg);  color: var(--sell);  border: 1px solid rgba(34,197,94,0.2); }
+.dec-badge.STORE { background: var(--store-bg); color: var(--store); border: 1px solid rgba(59,130,246,0.2); }
+.dec-badge.USE   { background: var(--use-bg);   color: var(--use);   border: 1px solid rgba(249,115,22,0.2); }
+
+.dec-text {
+  flex: 1; font-size: 12px; color: var(--text2); line-height: 1.4;
+}
+
+.dec-rev {
+  font-size: 12px; font-family: 'JetBrains Mono', monospace;
+  color: var(--sell); font-weight: 600; white-space: nowrap; flex-shrink: 0;
+}
+.dec-conf {
+  font-size: 10px; font-family: 'JetBrains Mono', monospace;
+  color: var(--muted); white-space: nowrap; flex-shrink: 0; padding-top: 2px;
+}
+
+/* GAUGES COLUMN */
+.gauge-col { display: flex; flex-direction: column; gap: 10px; }
+
+.gauge-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 20px;
+}
+.g-title {
+  font-size: 9px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--muted); font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 16px;
+}
+
+/* Arc gauge */
+.arc-wrap { display: flex; flex-direction: column; align-items: center; }
+.arc-wrap svg { overflow: visible; }
+
+/* Linear gauges */
+.lin-group { display: flex; flex-direction: column; gap: 16px; }
+.lin-g { display: flex; flex-direction: column; gap: 7px; }
+.lin-top {
+  display: flex; justify-content: space-between; align-items: baseline;
+}
+.lin-name { font-size: 12px; color: var(--text2); }
+.lin-val {
+  font-size: 14px; font-family: 'JetBrains Mono', monospace; font-weight: 500;
+}
+.lin-track {
+  height: 5px; background: var(--surface3); border-radius: 3px; overflow: hidden;
+}
+.lin-fill {
+  height: 100%; border-radius: 3px;
+  transition: width 1.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+.co2-band {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border2);
+}
+.co2-lbl { font-size: 12px; color: var(--text2); }
+.co2-num {
+  font-size: 20px; font-family: 'JetBrains Mono', monospace;
+  font-weight: 600; color: var(--sell);
+}
+
+/* ── TOMORROW ────────────────────────────────────────────── */
+.tom-grid {
+  display: grid; grid-template-columns: repeat(3,1fr); gap: 12px;
+  animation: fadeUp 0.55s 0.32s ease both;
+}
+@media(max-width:900px){ .tom-grid{ grid-template-columns:1fr; } }
+
+.tom-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 22px;
+  display: flex; flex-direction: column; gap: 8px;
+  transition: border-color 0.2s;
+}
+.tom-card:hover { border-color: var(--border2); }
+.tom-icon { font-size: 28px; }
+.tom-title { font-size: 14px; font-weight: 600; }
+.tom-body { font-size: 12px; color: var(--text2); line-height: 1.65; flex: 1; }
+
+.pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 7px; padding: 7px 12px; margin-top: 6px;
+  font-size: 12px; font-family: 'JetBrains Mono', monospace; font-weight: 500;
+}
+.pill.green { background: var(--sell-bg);  color: var(--sell);  border: 1px solid rgba(34,197,94,0.2); }
+.pill.blue  { background: var(--store-bg); color: var(--store); border: 1px solid rgba(59,130,246,0.2); }
+.pill.gold  { background: rgba(245,195,0,0.08); color: var(--solar); border: 1px solid rgba(245,195,0,0.2); }
+
+/* ── FOOTER ──────────────────────────────────────────────── */
+footer {
+  text-align: center; padding: 28px 0;
+  font-size: 11px; font-family: 'JetBrains Mono', monospace;
+  color: var(--muted); border-top: 1px solid var(--border);
+  margin: 0 32px; line-height: 1.8;
+}
+
+/* ── ANIMATIONS ──────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* weekly sparkline */
+.sparkline-wrap { display: flex; align-items: flex-end; gap: 3px; height: 40px; margin-top: 12px; }
+.spark-bar {
+  flex: 1; border-radius: 3px 3px 0 0;
+  background: var(--store-bg); border: 1px solid rgba(59,130,246,0.2);
+  transition: background 0.2s;
+  position: relative; cursor: default;
+}
+.spark-bar:hover { background: rgba(59,130,246,0.25); }
+.spark-bar::after {
+  content: attr(data-tip);
+  position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%);
+  background: var(--surface3); border: 1px solid var(--border2);
+  border-radius: 5px; padding: 4px 8px;
+  font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text);
+  white-space: nowrap; opacity: 0; pointer-events: none;
+  transition: opacity 0.15s;
+}
+.spark-bar:hover::after { opacity: 1; }
+</style>
+</head>
+<body>
+
+<!-- ── HEADER ──────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">☀</div>
+    <div>
+      <div class="logo-name">SolarAI</div>
+      <div class="logo-sub">Energiemanagement · Süddeutschland</div>
+    </div>
+  </div>
+
+  <div class="header-clock">
+    <div class="clock-date">12. Juni 2025 · Prototype Day</div>
+    <div class="clock-time" id="live-time">—</div>
+  </div>
+
+  <div class="header-right">
+    <div class="ai-badge">
+      <div class="pulse sell" id="pulse-dot"></div>
+      <span id="ai-mode-label" style="color:var(--sell);">KI-Modus: SELL</span>
+    </div>
+    <div class="sys-status">
+      System: <span style="color:var(--sell); margin-left:4px;">● Online</span>
+    </div>
+  </div>
+</header>
+
+<!-- ── MAIN ────────────────────────────────────────────────────── -->
+<main>
+
+  <!-- HERO -->
+  <section class="hero" style="padding-top: 4px;">
+    <p class="hero-narrative">
+      Heute produzierte dein System <span class="n-solar">42.3 kWh</span> Solarstrom.
+      Die KI traf <strong>96 Entscheidungen</strong> und verdiente deinen bisher
+      besten Tag: <span class="n-sell">+€ 30.60</span> Netto-Vorteil gegenüber dem Netz.
+      Bestes Fenster war um <span class="n-sell">18:00 Uhr</span> — Einspeisung zu <span class="n-sell">€ 0.35/kWh</span>.
+    </p>
+
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span class="stat-lbl">☀ Produziert</span>
+        <div><span class="stat-val c-solar">42.3</span><span class="stat-unit">kWh</span></div>
+        <span class="stat-sub pos">↑ +8.4 % ggü. gestern</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-lbl">€ Einspeisung</span>
+        <div><span class="stat-val c-sell">19.40</span><span class="stat-unit">€</span></div>
+        <span class="stat-sub">Ø € 0.31/kWh erzielt</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-lbl">🔋 Netzbezug gespart</span>
+        <div><span class="stat-val c-store">11.20</span><span class="stat-unit">€</span></div>
+        <span class="stat-sub">35 kWh selbst verbraucht</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-lbl">⚡ KI-Entscheidungen</span>
+        <div><span class="stat-val c-text">96</span></div>
+        <span class="stat-sub">39× SELL · 40× STORE · 17× USE</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-lbl">🏠 Eigenversorgung</span>
+        <div><span class="stat-val c-sell">94</span><span class="stat-unit">%</span></div>
+        <span class="stat-sub pos">Netzunabhängig heute</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINANCIAL CLARITY -->
+  <div class="sec-label">Finanzübersicht — Dieser Monat (30 Tage)</div>
+  <div class="fin-grid">
+
+    <div class="fin-card earned">
+      <div class="fin-lbl">Verdient durch Einspeisung</div>
+      <div class="fin-big">€ 48.20</div>
+      <div class="fin-desc">
+        Strom ins Netz verkauft, wenn die Spotpreise hoch waren.
+        Durchschnittlich <em style="color:var(--sell)">€ 0.291/kWh</em> erzielt —
+        das ist <em style="color:var(--sell)">3.5× mehr</em> als der EEG-Einspeisevergütung von € 0.082.
+      </div>
+      <div class="sparkline-wrap" id="weekly-revenue"></div>
+    </div>
+
+    <div class="fin-card saved">
+      <div class="fin-lbl">Gespart durch Eigenverbrauch</div>
+      <div class="fin-big">€ 124.80</div>
+      <div class="fin-desc">
+        Strom, den du selbst produziert und genutzt hast, statt ihn
+        für <em style="color:var(--store)">€ 0.32/kWh</em> aus dem Netz zu kaufen.
+        Das entspricht <em style="color:var(--store)">390 kWh</em> Eigenverbrauch.
+      </div>
+      <div class="sparkline-wrap" id="weekly-savings"></div>
+    </div>
+
+    <div class="fin-card counter">
+      <div class="fin-lbl">Was du ohne SolarAI bezahlt hättest</div>
+      <div class="fin-big">€ 183.60</div>
+      <div class="fin-desc">
+        Dein vollständiger Strombedarf aus dem Netz wäre
+        <em style="color:var(--solar)">€ 183.60</em> gekostet.
+        Dein tatsächlicher Restbetrag diesen Monat:
+      </div>
+      <div class="fin-vs">
+        <span class="was-price">€ 183.60</span>
+        <span class="vs-arrow">→</span>
+        <span class="now-price">€ 10.60</span>
+      </div>
+      <div class="savings-badge">✓ 94.2 % der Stromrechnung eingespart</div>
+    </div>
+
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="sec-label">24-Stunden-Verlauf — 12. Juni 2025</div>
+  <div class="timeline-wrap">
+    <div class="timeline-card">
+      <div class="tl-header">
+        <div class="tl-title">Solarproduktion &amp; Spotpreis im Tagesverlauf</div>
+        <div class="legend">
+          <div class="leg-item"><div class="leg-line" style="background:var(--solar);"></div>Solar (kW)</div>
+          <div class="leg-item"><div class="leg-line" style="background:rgba(255,255,255,0.4);"></div>Spotpreis (€/kWh)</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--sell);"></div>SELL</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--store);"></div>STORE</div>
+          <div class="leg-item"><div class="leg-dot" style="background:var(--use);"></div>USE</div>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="tlChart"></canvas></div>
+      <div class="band-wrap">
+        <div class="band-title">Dominante KI-Entscheidung je Stunde</div>
+        <div class="band" id="dec-band"></div>
+        <div class="band-hours" id="band-hrs"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MIDDLE -->
+  <div class="sec-label">KI-Entscheidungsprotokoll &amp; Systemstatus</div>
+  <div class="mid-grid">
+
+    <!-- DECISION LOG -->
+    <div class="card">
+      <div class="card-title">KI-Entscheidungsprotokoll</div>
+      <div class="card-sub">Heutige Entscheidungen, neueste zuerst — mit Klartextbegründung</div>
+      <div class="dec-list" id="dec-log"></div>
+    </div>
+
+    <!-- GAUGES -->
+    <div class="gauge-col">
+
+      <!-- Self-sufficiency arc -->
+      <div class="gauge-card">
+        <div class="g-title">Netzunabhängigkeit — Heute</div>
+        <div class="arc-wrap">
+          <svg width="210" height="115" viewBox="0 0 210 115">
+            <defs>
+              <linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%"   stop-color="#3b82f6"/>
+                <stop offset="100%" stop-color="#22c55e"/>
+              </linearGradient>
+            </defs>
+            <!-- Track -->
+            <path d="M 25 105 A 80 80 0 0 1 185 105"
+                  fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="12" stroke-linecap="round"/>
+            <!-- 94% fill: full arc = 251.3, 94% = 236.2, dashoffset = 251.3-236.2 = 15.1 -->
+            <path d="M 25 105 A 80 80 0 0 1 185 105"
+                  fill="none" stroke="url(#arcGrad)" stroke-width="12" stroke-linecap="round"
+                  stroke-dasharray="251.3" stroke-dashoffset="15.1"
+                  style="filter:drop-shadow(0 0 8px rgba(34,197,94,0.45))"/>
+            <!-- Value -->
+            <text x="105" y="96" text-anchor="middle"
+                  font-family="JetBrains Mono" font-size="32" font-weight="700" fill="#22c55e">94%</text>
+            <text x="105" y="112" text-anchor="middle"
+                  font-family="Syne" font-size="9" fill="#52596b" letter-spacing="1">EIGENVERSORGUNG</text>
+            <!-- Left label -->
+            <text x="25" y="120" text-anchor="middle"
+                  font-family="JetBrains Mono" font-size="9" fill="#52596b">0%</text>
+            <!-- Right label -->
+            <text x="185" y="120" text-anchor="middle"
+                  font-family="JetBrains Mono" font-size="9" fill="#52596b">100%</text>
+          </svg>
+        </div>
+      </div>
+
+      <!-- System gauges -->
+      <div class="gauge-card">
+        <div class="g-title">Systemstatus — 23:59 Uhr</div>
+        <div class="lin-group">
+
+          <div class="lin-g">
+            <div class="lin-top">
+              <span class="lin-name">🔋 Batterie (Li-Ion)</span>
+              <span class="lin-val" style="color:var(--store);">63% <span style="font-size:11px;color:var(--muted);">/ 12.5 kWh</span></span>
+            </div>
+            <div class="lin-track">
+              <div class="lin-fill" style="width:63%; background:var(--store);"></div>
+            </div>
+          </div>
+
+          <div class="lin-g">
+            <div class="lin-top">
+              <span class="lin-name">🌡 Thermospeicher</span>
+              <span class="lin-val" style="color:var(--use);">64°C <span style="font-size:11px;color:var(--muted);">/ 85°C max</span></span>
+            </div>
+            <div class="lin-track">
+              <div class="lin-fill" style="width:75%; background:linear-gradient(to right,var(--store),var(--use));"></div>
+            </div>
+          </div>
+
+          <div class="lin-g">
+            <div class="lin-top">
+              <span class="lin-name">☀ Aktuelle Einstrahlung</span>
+              <span class="lin-val" style="color:var(--muted);">16 W/m² <span style="font-size:11px;color:var(--muted);">→ Nacht</span></span>
+            </div>
+            <div class="lin-track">
+              <div class="lin-fill" style="width:2%; background:var(--solar);"></div>
+            </div>
+          </div>
+
+          <div class="lin-g">
+            <div class="lin-top">
+              <span class="lin-name">⚡ Netzfrequenz</span>
+              <span class="lin-val" style="color:var(--sell);">50.008 <span style="font-size:11px;color:var(--muted);">Hz</span></span>
+            </div>
+            <div class="lin-track">
+              <div class="lin-fill" style="width:88%; background:linear-gradient(to right,var(--store),var(--sell));"></div>
+            </div>
+          </div>
+
+          <div class="co2-band">
+            <span class="co2-lbl">🌿 CO₂ vermieden heute</span>
+            <span class="co2-num">17.0 kg</span>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- TOMORROW -->
+  <div class="sec-label">Morgen — Prognose &amp; Handlungsempfehlungen</div>
+  <div class="tom-grid">
+
+    <div class="tom-card">
+      <div class="tom-icon">⛅</div>
+      <div class="tom-title">Wetterprognose</div>
+      <div class="tom-body">
+        Morgen teilweise bewölkt mit Aufheiterungen am Nachmittag.
+        Erwartete Solarproduktion: <strong style="color:var(--solar)">~22 kWh</strong> —
+        rund 48% weniger als heute. Temperatur 18–24°C, Wind 3–6 m/s.
+        <br><br>
+        Der Thermospeicher hält mit seiner guten Dämmung (0.3°C/h Verlust)
+        bis morgen Nachmittag problemlos die Zieltemperatur.
+      </div>
+      <span class="pill gold">~22 kWh Prognose morgen</span>
+    </div>
+
+    <div class="tom-card">
+      <div class="tom-icon">🌙</div>
+      <div class="tom-title">Günstig laden — 01:00 bis 04:00 Uhr</div>
+      <div class="tom-body">
+        In der Nacht fallen die Spotpreise auf etwa
+        <strong style="color:var(--store)">€ 0.14–0.15/kWh</strong>.
+        Da morgen weniger Sonne erwartet wird, empfiehlt die KI, die Batterie
+        jetzt zu laden — bevor der Netzbezug tagsüber wieder teurer wird.
+        <br><br>
+        Prognostizierte Ersparnis gegenüber Tagsbezug:
+        <strong style="color:var(--sell)">~ € 1.80</strong>
+      </div>
+      <span class="pill blue">→ 01:00–04:00 Uhr laden</span>
+    </div>
+
+    <div class="tom-card">
+      <div class="tom-icon">📈</div>
+      <div class="tom-title">Bestes Verkaufsfenster — 17:00 bis 19:00</div>
+      <div class="tom-body">
+        Morgen Nachmittag steigen die Spotpreise voraussichtlich auf
+        <strong style="color:var(--sell)">€ 0.33–0.38/kWh</strong>.
+        Die KI plant, gespeicherte Energie dann ins Netz einzuspeisen.
+        SOC-Ziel vor dem Fenster: mindestens 75%.
+        <br><br>
+        Prognostizierter Erlös:
+        <strong style="color:var(--sell)">~ € 7.80</strong>
+      </div>
+      <span class="pill green">→ 17:00–19:00 Uhr verkaufen</span>
+    </div>
+
+  </div>
+
+</main>
+
+<footer>
+  SolarAI Controller · 6.4 kWp · 12.5 kWh Batterie · 800L Thermospeicher · Süddeutschland<br>
+  <span style="color:var(--border3)">ESP32 → MQTT → InfluxDB → Python KI · 15-Minuten-Intervalle · Alle Daten von realen Sensoren</span>
+</footer>
+
+<script>
+// ── DATA (from actual June 12, 2025 sensor readings) ─────────
+const hours = Array.from({length:24},(_,i)=>`${String(i).padStart(2,'0')}:00`);
+
+// Hourly averages computed from 15-min sensor data
+const solarKw = [
+  0.025, 0.058, 0.043, 0.060, 0.000, 0.065,
+  0.333, 1.098, 2.470, 3.865, 5.068, 5.903,
+  6.498, 6.075, 5.650, 4.680, 3.300, 1.803,
+  0.728, 0.080, 0.015, 0.060, 0.050, 0.025
+];
+
+const spotEur = [
+  0.181, 0.168, 0.159, 0.150, 0.151, 0.161,
+  0.198, 0.229, 0.265, 0.285, 0.291, 0.273,
+  0.248, 0.241, 0.249, 0.271, 0.300, 0.320,
+  0.341, 0.311, 0.283, 0.250, 0.221, 0.199
+];
+
+// Dominant decision per hour (from actual AI decision log)
+const hourDec = [
+  'SELL','SELL','STORE','SELL','STORE','SELL',
+  'SELL','SELL','STORE','SELL','STORE','SELL',
+  'SELL','SELL','STORE','SELL','STORE','SELL',
+  'SELL','SELL','STORE','SELL','STORE','SELL'
+];
+
+// Weekly net gain sparkline data (W1–W12 from Excel)
+const weeklyRevenue = [10.5,18.37,20.7,22.82,16.27,13.9,13.11,16.9,24.6,13.11,13.5,24.16];
+const weeklySavings = [20.36,34.66,19.62,31.39,34.49,24.17,33.16,32.96,24.45,23.35,18.2,16.91];
+
+// Decision log entries (from actual data, newest first)
+const decLog = [
+  {t:'23:45',d:'STORE',txt:'Nächste Stunden günstig — Batterie für morgen aufladen',rev:null,c:92},
+  {t:'23:30',d:'STORE',txt:'Thermospeicher hält Temperatur — kein Handlungsbedarf',rev:null,c:77},
+  {t:'23:15',d:'SELL', txt:'Kleiner Restsolar-Überschuss ins Netz eingespeist',rev:0.20,c:82},
+  {t:'23:00',d:'SELL', txt:'Abendliche Netznachfrage erkannt — Einspeisung lohnt',rev:0.32,c:87},
+  {t:'22:45',d:'USE',  txt:'Nachtbedarf aus gespeicherter Energie gedeckt — kein Netzbezug',rev:null,c:77},
+  {t:'22:15',d:'SELL', txt:'Preisanstieg erkannt — kleiner Entladeimpuls ins Netz',rev:0.17,c:93},
+  {t:'21:30',d:'SELL', txt:'Preis über Schwelle — Batterie hatte genug Puffer zum Verkaufen',rev:0.54,c:82},
+  {t:'21:15',d:'SELL', txt:'Preisanstieg auf € 0.258 erkannt — optimales Einspeisefenster',rev:0.63,c:82},
+  {t:'19:45',d:'SELL', txt:'Hohe Netznachfrage, SOC bei 79% — sicher einspeisen',rev:0.25,c:93},
+  {t:'19:30',d:'SELL', txt:'Abendpreispeak bestätigt — Entladen mit Gewinn',rev:0.66,c:78},
+  {t:'18:00',d:'SELL', txt:'🏆 BESTES FENSTER HEUTE: € 0.35/kWh · SOC bei 80% · Perfektes Timing',rev:1.22,c:94,best:true},
+  {t:'17:15',d:'SELL', txt:'Preis auf € 0.313 gestiegen — Batterie ans Netz abgegeben',rev:0.33,c:96},
+  {t:'13:30',d:'SELL', txt:'Mittagsspitze: SOC 82%, Preis über € 0.245 — optimaler Zeitpunkt',rev:0.83,c:99},
+  {t:'12:00',d:'SELL', txt:'Solar bei 6.3 kW, Preis über Schwelle — Überschuss verkauft',rev:0.47,c:95},
+  {t:'10:15',d:'SELL', txt:'Starke Mittagsproduktion — Solarüberschuss gewinnbringend eingespeist',rev:0.76,c:78},
+  {t:'08:45',d:'SELL', txt:'Hohe Netznachfrage am Morgen — Solar + Batterie kombiniert eingespeist',rev:0.60,c:97},
+  {t:'07:45',d:'SELL', txt:'Preis über € 0.227, SOC ausreichend — Morgen-Einspeisung gestartet',rev:0.66,c:98},
+  {t:'06:15',d:'SELL', txt:'Früher Preisanstieg erkannt — Batteriepuffer genutzt',rev:0.48,c:96},
+  {t:'08:00',d:'STORE',txt:'Thermospeicher unter Ziel — Solarenergie zum Aufheizen verwendet',rev:null,c:96},
+  {t:'09:00',d:'STORE',txt:'Solarüberschuss und SOC unter 80% — Batterie laden',rev:null,c:99},
+];
+
+// ── CHART ─────────────────────────────────────────────────
+function buildChart() {
+  const ctx = document.getElementById('tlChart').getContext('2d');
+
+  const solarGrad = ctx.createLinearGradient(0, 0, 0, 270);
+  solarGrad.addColorStop(0, 'rgba(245,195,0,0.38)');
+  solarGrad.addColorStop(0.7, 'rgba(245,195,0,0.08)');
+  solarGrad.addColorStop(1, 'rgba(245,195,0,0.00)');
+
+  new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: hours,
+      datasets: [
+        {
+          label: 'Solar (kW)',
+          data: solarKw,
+          yAxisID: 'yS',
+          borderColor: '#f5c300',
+          borderWidth: 2.5,
+          fill: true,
+          backgroundColor: solarGrad,
+          tension: 0.42,
+          pointRadius: 0,
+          pointHoverRadius: 5,
+          pointHoverBackgroundColor: '#f5c300',
+          pointHoverBorderColor: '#07090e',
+          pointHoverBorderWidth: 2,
+        },
+        {
+          label: 'Spotpreis (€/kWh)',
+          data: spotEur,
+          yAxisID: 'yP',
+          borderColor: 'rgba(255,255,255,0.38)',
+          borderWidth: 1.5,
+          fill: false,
+          tension: 0.42,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          pointHoverBackgroundColor: 'rgba(255,255,255,0.8)',
+          pointHoverBorderColor: '#07090e',
+          pointHoverBorderWidth: 2,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1f2c',
+          borderColor: 'rgba(255,255,255,0.10)',
+          borderWidth: 1,
+          titleColor: '#52596b',
+          bodyColor: '#dde1eb',
+          padding: 14,
+          cornerRadius: 8,
+          titleFont: { family: 'JetBrains Mono', size: 11 },
+          bodyFont: { family: 'JetBrains Mono', size: 12 },
+          callbacks: {
+            title: ctx => `${ctx[0].label} Uhr`,
+            label: ctx => {
+              if (ctx.datasetIndex === 0)
+                return `  ☀  Solar:   ${ctx.parsed.y.toFixed(2)} kW`;
+              return `  €  Preis:   €${ctx.parsed.y.toFixed(3)}/kWh`;
+            },
+            afterBody: ctx => {
+              const h = ctx[0].dataIndex;
+              const d = hourDec[h];
+              const map = {SELL:'↗ KI: SELL — Einspeisung', STORE:'→ KI: STORE — Speichern', USE:'↙ KI: USE — Verbrauch'};
+              return [`  ⚡ ${map[d]}`];
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(255,255,255,0.035)', drawTicks: false },
+          ticks: {
+            color: '#52596b',
+            font: { family: 'JetBrains Mono', size: 10 },
+            maxTicksLimit: 13, maxRotation: 0
+          },
+          border: { display: false }
+        },
+        yS: {
+          type: 'linear', position: 'left',
+          min: 0, max: 8,
+          grid: { color: 'rgba(255,255,255,0.035)' },
+          ticks: {
+            color: '#f5c300',
+            font: { family: 'JetBrains Mono', size: 10 },
+            callback: v => `${v} kW`
+          },
+          border: { display: false }
+        },
+        yP: {
+          type: 'linear', position: 'right',
+          min: 0.08, max: 0.44,
+          grid: { display: false },
+          ticks: {
+            color: 'rgba(255,255,255,0.32)',
+            font: { family: 'JetBrains Mono', size: 10 },
+            callback: v => `€${v.toFixed(2)}`
+          },
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+// ── DECISION BAND ─────────────────────────────────────────
+function buildBand() {
+  const band = document.getElementById('dec-band');
+  const hrs  = document.getElementById('band-hrs');
+  const tips = {
+    SELL:  'SELL — Einspeisung',
+    STORE: 'STORE — Laden',
+    USE:   'USE — Eigenverbrauch'
+  };
+  hourDec.forEach((d, i) => {
+    const s = document.createElement('div');
+    s.className = `band-seg ${d}`;
+    s.setAttribute('data-tip', `${String(i).padStart(2,'0')}:00 · ${tips[d]}`);
+    band.appendChild(s);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'band-h-lbl';
+    lbl.textContent = i % 3 === 0 ? `${i}h` : '';
+    hrs.appendChild(lbl);
+  });
+}
+
+// ── DECISION LOG ──────────────────────────────────────────
+function buildDecLog() {
+  const list = document.getElementById('dec-log');
+  decLog.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'dec-row' + (d.best ? ' best' : '');
+    row.innerHTML = `
+      <span class="dec-time">${d.t}</span>
+      <span class="dec-badge ${d.d}">${d.d}</span>
+      <span class="dec-text">${d.txt}</span>
+      ${d.rev ? `<span class="dec-rev">+€${d.rev.toFixed(2)}</span>` : ''}
+      <span class="dec-conf">${d.c}%</span>
+    `;
+    list.appendChild(row);
+  });
+}
+
+// ── SPARKLINES ────────────────────────────────────────────
+function buildSparkline(id, data, color, tipPrefix) {
+  const wrap = document.getElementById(id);
+  if (!wrap) return;
+  const max = Math.max(...data);
+  data.forEach((v, i) => {
+    const bar = document.createElement('div');
+    bar.className = 'spark-bar';
+    bar.style.height = `${(v / max) * 100}%`;
+    bar.style.background = color;
+    bar.style.border = `1px solid ${color}40`;
+    bar.setAttribute('data-tip', `W${i+1}: ${tipPrefix}${v.toFixed(2)}`);
+    wrap.appendChild(bar);
+  });
+}
+
+// ── CLOCK ─────────────────────────────────────────────────
+function tick() {
+  const n = new Date();
+  document.getElementById('live-time').textContent =
+    n.toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+// ── INIT ──────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  buildChart();
+  buildBand();
+  buildDecLog();
+  buildSparkline('weekly-revenue', weeklyRevenue, 'rgba(34,197,94,0.4)', '€ ');
+  buildSparkline('weekly-savings', weeklySavings, 'rgba(59,130,246,0.4)', '€ ');
+  tick();
+  setInterval(tick, 1000);
+});
+</script>
+</body>
+</html>

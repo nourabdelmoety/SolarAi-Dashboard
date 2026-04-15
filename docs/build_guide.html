@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SolarAI — Build Guide</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #fafbfc;
+    --surface: #ffffff;
+    --border: #e2e8f0;
+    --text: #1a202c;
+    --muted: #64748b;
+    --solar: #d97706;
+    --sell: #16a34a;
+    --store: #1d4ed8;
+    --code-bg: #1c2030;
+    --code-text: #e2e8f0;
+    --step-num: #f5c542;
+    --phase-1: #fef3c7;
+    --phase-2: #dbeafe;
+    --phase-3: #d1fae5;
+    --phase-4: #ede9fe;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.7;
+    font-size: 15px;
+  }
+  .page { max-width: 860px; margin: 0 auto; padding: 48px 32px; }
+  h1 { font-size: 28px; font-weight: 600; letter-spacing: -0.5px; margin-bottom: 6px; }
+  .subtitle { color: var(--muted); font-size: 14px; font-family: 'IBM Plex Mono', monospace; margin-bottom: 40px; }
+  h2 { font-size: 20px; font-weight: 600; margin: 44px 0 16px; padding-bottom: 8px; border-bottom: 2px solid var(--border); }
+  h3 { font-size: 16px; font-weight: 600; margin: 24px 0 10px; }
+  p { margin-bottom: 12px; color: #374151; }
+  ul, ol { padding-left: 22px; margin-bottom: 14px; }
+  li { margin-bottom: 6px; color: #374151; }
+  a { color: var(--store); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    background: #f1f5f9;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: #1e40af;
+  }
+  pre {
+    background: var(--code-bg);
+    color: var(--code-text);
+    border-radius: 10px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    margin: 14px 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    line-height: 1.7;
+  }
+  pre .comment { color: #6b7280; }
+  pre .keyword { color: #f5c542; }
+  pre .string  { color: #4ade80; }
+  pre .number  { color: #fb923c; }
+
+  .phase-block {
+    border-radius: 12px;
+    padding: 6px 14px 6px 14px;
+    margin-bottom: 8px;
+    border-left: 4px solid;
+  }
+  .phase-1 { background: var(--phase-1); border-color: #d97706; }
+  .phase-2 { background: var(--phase-2); border-color: #1d4ed8; }
+  .phase-3 { background: var(--phase-3); border-color: #16a34a; }
+  .phase-4 { background: var(--phase-4); border-color: #7c3aed; }
+
+  .phase-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 2px;
+    margin-top: 8px;
+  }
+  .phase-1 .phase-label { color: #92400e; }
+  .phase-2 .phase-label { color: #1e3a8a; }
+  .phase-3 .phase-label { color: #14532d; }
+  .phase-4 .phase-label { color: #4c1d95; }
+
+  .step-row {
+    display: flex;
+    gap: 18px;
+    align-items: flex-start;
+    margin-bottom: 28px;
+  }
+  .step-num {
+    flex-shrink: 0;
+    width: 36px; height: 36px;
+    background: var(--code-bg);
+    color: var(--step-num);
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 14px;
+    font-weight: 500;
+    margin-top: 2px;
+  }
+  .step-content { flex: 1; }
+  .step-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .step-sub { font-size: 12px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; margin-bottom: 8px; }
+
+  .callout {
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin: 14px 0;
+    font-size: 13px;
+    display: flex;
+    gap: 10px;
+  }
+  .callout-info    { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .callout-warn    { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; }
+  .callout-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #14532d; }
+  .callout-icon { flex-shrink: 0; font-size: 16px; }
+
+  .table-wrap { overflow-x: auto; margin: 16px 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th {
+    text-align: left; padding: 8px 12px;
+    background: var(--code-bg); color: var(--step-num);
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.05em;
+    border: 1px solid #2d3748;
+  }
+  td { padding: 8px 12px; border: 1px solid var(--border); vertical-align: top; }
+  tr:nth-child(even) td { background: #f8fafc; }
+
+  .badge {
+    display: inline-block; padding: 2px 8px; border-radius: 4px;
+    font-size: 11px; font-weight: 600; font-family: 'IBM Plex Mono', monospace;
+  }
+  .badge-free    { background: #d1fae5; color: #065f46; }
+  .badge-buy     { background: #fee2e2; color: #991b1b; }
+  .badge-optional{ background: #e0e7ff; color: #3730a3; }
+  .badge-required{ background: #fef3c7; color: #92400e; }
+
+  .arch-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin: 16px 0;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    line-height: 2;
+  }
+  .arch-layer { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 4px 0; }
+  .arch-node {
+    padding: 5px 14px; border-radius: 6px;
+    font-size: 11px; font-weight: 500;
+    border: 1px solid;
+  }
+  .node-sensor  { background: #fef9c3; border-color: #d97706; color: #92400e; }
+  .node-fw      { background: #dbeafe; border-color: #3b82f6; color: #1e3a8a; }
+  .node-backend { background: #d1fae5; border-color: #10b981; color: #064e3b; }
+  .node-ai      { background: #ede9fe; border-color: #7c3aed; color: #4c1d95; }
+  .node-dash    { background: #fce7f3; border-color: #ec4899; color: #831843; }
+  .arrow { color: var(--muted); font-size: 16px; }
+
+  .toc { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 20px 24px; margin-bottom: 32px; }
+  .toc-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--muted); margin-bottom: 12px; }
+  .toc ol { margin-bottom: 0; }
+  .toc li { margin-bottom: 4px; font-size: 14px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+  footer { color: var(--muted); font-size: 12px; font-family: 'IBM Plex Mono', monospace; text-align: center; padding-top: 32px; border-top: 1px solid var(--border); margin-top: 48px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <h1>SolarAI Controller — Build Guide</h1>
+  <div class="subtitle">prototype → production · industrial engineering project · Germany</div>
+
+  <div class="toc">
+    <div class="toc-title">Contents</div>
+    <ol>
+      <li><a href="#architecture">System architecture overview</a></li>
+      <li><a href="#phase1">Phase 1 — Hardware &amp; sensors</a></li>
+      <li><a href="#phase2">Phase 2 — Edge firmware (ESP32 / Raspberry Pi)</a></li>
+      <li><a href="#phase3">Phase 3 — Backend stack (MQTT → InfluxDB → Node-RED)</a></li>
+      <li><a href="#phase4">Phase 4 — AI decision controller (Python)</a></li>
+      <li><a href="#phase5">Phase 5 — Dashboard (Grafana or custom HTML)</a></li>
+      <li><a href="#phase6">Phase 6 — External data (prices + weather)</a></li>
+      <li><a href="#phase7">Phase 7 — Scalability path</a></li>
+      <li><a href="#bom">Bill of materials</a></li>
+      <li><a href="#resources">Where to find everything</a></li>
+    </ol>
+  </div>
+
+  <!-- ─── ARCHITECTURE ─── -->
+  <h2 id="architecture">1 · System architecture overview</h2>
+  <p>Your system has five layers. Keep them separate — this is what makes it scalable later.</p>
+
+  <div class="arch-box">
+    <div class="arch-layer">
+      <span class="arch-node node-sensor">Solar sensor (SCT-013)</span>
+      <span class="arch-node node-sensor">Battery BMS (UART)</span>
+      <span class="arch-node node-sensor">Thermal probe (DS18B20)</span>
+      <span class="arch-node node-sensor">Grid meter (PZEM-004T)</span>
+      <span class="arch-node node-sensor">Irradiance (BH1750)</span>
+      <span class="arch-node node-sensor">Ambient (DHT22)</span>
+    </div>
+    <div style="margin: 4px 0 2px; color: #94a3b8;">↓ serial / I2C / digital</div>
+    <div class="arch-layer">
+      <span class="arch-node node-fw">ESP32 (edge device) — reads sensors, publishes MQTT every 15s</span>
+    </div>
+    <div style="margin: 4px 0 2px; color: #94a3b8;">↓ MQTT over WiFi (port 1883)</div>
+    <div class="arch-layer">
+      <span class="arch-node node-backend">Mosquitto MQTT broker</span>
+      <span class="arrow">→</span>
+      <span class="arch-node node-backend">Node-RED (flow processor)</span>
+      <span class="arrow">→</span>
+      <span class="arch-node node-backend">InfluxDB (time-series DB)</span>
+    </div>
+    <div style="margin: 4px 0 2px; color: #94a3b8;">↓ HTTP REST / InfluxDB query</div>
+    <div class="arch-layer">
+      <span class="arch-node node-ai">Python AI controller — runs every 15 min, reads DB + APIs, writes decision</span>
+    </div>
+    <div style="margin: 4px 0 2px; color: #94a3b8;">↓ MQTT command topic / relay GPIO</div>
+    <div class="arch-layer">
+      <span class="arch-node node-dash">Grafana dashboard</span>
+      <span class="arrow">or</span>
+      <span class="arch-node node-dash">Custom HTML dashboard (provided)</span>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <span class="callout-icon">ℹ</span>
+    <span>For the prototype, everything except the ESP32 runs on your laptop or a Raspberry Pi 4. When you scale up, you move the backend stack to a small server or cloud VM — the code changes nothing.</span>
+  </div>
+
+  <!-- ─── PHASE 1 ─── -->
+  <h2 id="phase1">2 · Phase 1 — Hardware &amp; sensors</h2>
+
+  <div class="phase-block phase-1">
+    <div class="phase-label">Phase 1 · estimated time: 1–2 weeks</div>
+    <p>Buy, wire up, and verify your 6 sensors before writing any software.</p>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">01</div>
+    <div class="step-content">
+      <div class="step-title">Buy an ESP32 development board</div>
+      <div class="step-sub">hardware · ~€8</div>
+      <p>Use the <strong>ESP32 DevKit v1</strong> (30-pin) or <strong>Wemos D1 Mini ESP32</strong>. Both are widely available on Amazon.de, AZ-Delivery, or Berrybase. The ESP32 has built-in WiFi, enough GPIO pins for all 6 sensors, and a large community.</p>
+      <div class="callout callout-warn">
+        <span class="callout-icon">⚠</span>
+        <span>Do NOT use an Arduino Uno — it has no WiFi and not enough memory. ESP32 only.</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">02</div>
+    <div class="step-content">
+      <div class="step-title">Wire up your 6 sensors</div>
+      <div class="step-sub">hardware · ~€35 total for all sensors</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Sensor</th><th>What it measures</th><th>Protocol</th><th>ESP32 pin</th><th>Price</th></tr></thead>
+          <tbody>
+            <tr><td><code>SCT-013-030</code></td><td>Solar / inverter current output</td><td>Analog (ADC)</td><td>GPIO34 (ADC1)</td><td>~€6</td></tr>
+            <tr><td><code>PZEM-004T v3</code></td><td>Grid bidirectional energy meter</td><td>UART (Serial2)</td><td>GPIO16/17</td><td>~€9</td></tr>
+            <tr><td><code>DS18B20</code></td><td>Thermal store water temperature</td><td>1-Wire</td><td>GPIO4</td><td>~€3</td></tr>
+            <tr><td><code>BH1750</code></td><td>Solar irradiance (lux → W/m²)</td><td>I2C</td><td>SDA=21, SCL=22</td><td>~€3</td></tr>
+            <tr><td><code>DHT22</code></td><td>Ambient temperature + humidity</td><td>Digital</td><td>GPIO5</td><td>~€5</td></tr>
+            <tr><td>Battery BMS</td><td>State of charge (%)</td><td>UART / RS485</td><td>GPIO18/19</td><td>(from your battery)</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p>All of the above use standard 3.3V logic — directly compatible with ESP32. The SCT-013 needs a 10Ω burden resistor and a voltage divider to bring the signal to ESP32's 0–3.3V ADC range.</p>
+    </div>
+  </div>
+
+  <!-- ─── PHASE 2 ─── -->
+  <h2 id="phase2">3 · Phase 2 — ESP32 firmware</h2>
+
+  <div class="phase-block phase-2">
+    <div class="phase-label">Phase 2 · estimated time: 1 week</div>
+    <p>Write Arduino-style C++ that reads all sensors and publishes their values over WiFi using MQTT.</p>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">03</div>
+    <div class="step-content">
+      <div class="step-title">Install Arduino IDE + ESP32 board + libraries</div>
+      <div class="step-sub">software setup · free</div>
+      <ol>
+        <li>Download <strong>Arduino IDE 2.x</strong> from arduino.cc</li>
+        <li>In Arduino IDE → Preferences → Additional Boards Manager URLs, add: <code>https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json</code></li>
+        <li>Tools → Board → Boards Manager → search "esp32" → install by Espressif Systems</li>
+        <li>Install these libraries via Tools → Manage Libraries:
+          <ul>
+            <li><code>PubSubClient</code> by Nick O'Leary (MQTT)</li>
+            <li><code>ArduinoJson</code> by Benoit Blanchon</li>
+            <li><code>OneWire</code> + <code>DallasTemperature</code> (DS18B20)</li>
+            <li><code>BH1750</code> by Christopher Laws</li>
+            <li><code>DHT sensor library</code> by Adafruit</li>
+            <li><code>PZEM-004T-v30</code> by Jakub Mandula</li>
+          </ul>
+        </li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">04</div>
+    <div class="step-content">
+      <div class="step-title">Flash the firmware</div>
+      <div class="step-sub">core code structure · C++</div>
+      <p>Here is the core structure of your ESP32 firmware. This is what you flash and it handles all 6 sensors:</p>
+      <pre><span class="comment">// SolarAI ESP32 Firmware — main.cpp
+// Reads 6 sensors every 15 seconds, publishes to MQTT broker</span>
+
+#include &lt;WiFi.h&gt;
+#include &lt;PubSubClient.h&gt;
+#include &lt;ArduinoJson.h&gt;
+#include &lt;OneWire.h&gt;
+#include &lt;DallasTemperature.h&gt;
+#include &lt;BH1750.h&gt;
+#include &lt;DHT.h&gt;
+#include &lt;PZEM004Tv30.h&gt;
+
+<span class="comment">// ── CONFIG ──────────────────────────────────</span>
+<span class="keyword">const char</span>* WIFI_SSID     = <span class="string">"YourWiFiName"</span>;
+<span class="keyword">const char</span>* WIFI_PASS     = <span class="string">"YourWiFiPassword"</span>;
+<span class="keyword">const char</span>* MQTT_BROKER   = <span class="string">"192.168.1.100"</span>; <span class="comment">// IP of your laptop/Pi</span>
+<span class="keyword">const char</span>* MQTT_TOPIC    = <span class="string">"solar/sensors"</span>;
+<span class="keyword">const char</span>* MQTT_CMD      = <span class="string">"solar/command"</span>; <span class="comment">// receives AI decisions</span>
+<span class="keyword">const int</span>   PUBLISH_EVERY = <span class="number">15000</span>;           <span class="comment">// 15 seconds</span>
+
+<span class="comment">// ── SENSOR SETUP ────────────────────────────</span>
+OneWire           oneWire(<span class="number">4</span>);
+DallasTemperature thermalSensor(&oneWire);
+BH1750            lightMeter;
+DHT               dht(<span class="number">5</span>, DHT22);
+PZEM004Tv30       pzem(Serial2, <span class="number">16</span>, <span class="number">17</span>);
+
+WiFiClient        espClient;
+PubSubClient      mqttClient(espClient);
+
+<span class="keyword">void</span> setup() {
+  Serial.begin(<span class="number">115200</span>);
+  Wire.begin();             <span class="comment">// I2C for BH1750</span>
+  thermalSensor.begin();
+  lightMeter.begin();
+  dht.begin();
+  connectWiFi();
+  mqttClient.setServer(MQTT_BROKER, <span class="number">1883</span>);
+  mqttClient.setCallback(onCommand); <span class="comment">// handle AI commands</span>
+}
+
+<span class="keyword">void</span> loop() {
+  <span class="keyword">if</span> (!mqttClient.connected()) reconnectMQTT();
+  mqttClient.loop();
+
+  <span class="keyword">static unsigned long</span> lastPublish = <span class="number">0</span>;
+  <span class="keyword">if</span> (millis() - lastPublish &gt;= PUBLISH_EVERY) {
+    publishSensorData();
+    lastPublish = millis();
+  }
+}
+
+<span class="keyword">void</span> publishSensorData() {
+  thermalSensor.requestTemperatures();
+  <span class="keyword">float</span> thermal_temp = thermalSensor.getTempCByIndex(<span class="number">0</span>);
+  <span class="keyword">float</span> lux          = lightMeter.readLightLevel();
+  <span class="keyword">float</span> irradiance   = lux / <span class="number">120.0</span>; <span class="comment">// approx W/m²</span>
+  <span class="keyword">float</span> ambient_temp = dht.readTemperature();
+  <span class="keyword">float</span> grid_power   = pzem.power();
+  <span class="keyword">float</span> grid_voltage = pzem.voltage();
+  <span class="comment">// SCT-013 solar current — analog read + convert</span>
+  <span class="keyword">float</span> solar_current = readSCT013(34);
+  <span class="keyword">float</span> solar_kw      = (solar_current * grid_voltage) / <span class="number">1000.0</span>;
+
+  StaticJsonDocument&lt;<span class="number">256</span>&gt; doc;
+  doc[<span class="string">"solar_kw"</span>]      = solar_kw;
+  doc[<span class="string">"thermal_temp"</span>]  = thermal_temp;
+  doc[<span class="string">"irradiance"</span>]    = irradiance;
+  doc[<span class="string">"ambient_temp"</span>]  = ambient_temp;
+  doc[<span class="string">"grid_power_w"</span>]  = grid_power;
+  doc[<span class="string">"timestamp"</span>]     = millis();
+  <span class="comment">// battery_soc would come from your BMS UART here</span>
+
+  <span class="keyword">char</span> buffer[<span class="number">256</span>];
+  serializeJson(doc, buffer);
+  mqttClient.publish(MQTT_TOPIC, buffer);
+}</pre>
+      <div class="callout callout-success">
+        <span class="callout-icon">✓</span>
+        <span>The AI controller receives data from <code>solar/sensors</code> and publishes commands (SELL / STORE / USE) back to <code>solar/command</code>. The ESP32 subscribes to that topic and activates relay outputs accordingly.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PHASE 3 ─── -->
+  <h2 id="phase3">4 · Phase 3 — Backend stack</h2>
+
+  <div class="phase-block phase-2">
+    <div class="phase-label">Phase 3 · estimated time: 2–3 days</div>
+    <p>Set up Mosquitto + Node-RED + InfluxDB on your laptop. Use Docker to do it in one command.</p>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">05</div>
+    <div class="step-content">
+      <div class="step-title">Install Docker Desktop</div>
+      <div class="step-sub">free · docker.com/products/docker-desktop</div>
+      <p>Download Docker Desktop for Windows or Mac. This is a container runtime — it lets you run Mosquitto, InfluxDB, and Node-RED as isolated services without installing them directly. For Windows, enable WSL2 when prompted.</p>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">06</div>
+    <div class="step-content">
+      <div class="step-title">Run the full stack with one Docker command</div>
+      <div class="step-sub">create a file called <code>docker-compose.yml</code> in any folder, then run it</div>
+      <pre><span class="comment"># docker-compose.yml — SolarAI backend stack</span>
+version: <span class="string">'3.8'</span>
+services:
+
+  mosquitto:         <span class="comment"># MQTT broker</span>
+    image: eclipse-mosquitto:2
+    ports: [<span class="string">"1883:1883"</span>]
+    volumes:
+      - ./mosquitto.conf:/mosquitto/config/mosquitto.conf
+
+  influxdb:          <span class="comment"># time-series database</span>
+    image: influxdb:2.7
+    ports: [<span class="string">"8086:8086"</span>]
+    environment:
+      DOCKER_INFLUXDB_INIT_MODE: setup
+      DOCKER_INFLUXDB_INIT_USERNAME: admin
+      DOCKER_INFLUXDB_INIT_PASSWORD: solar1234
+      DOCKER_INFLUXDB_INIT_ORG: solarai
+      DOCKER_INFLUXDB_INIT_BUCKET: energy_data
+
+  nodered:           <span class="comment"># visual flow processor</span>
+    image: nodered/node-red:latest
+    ports: [<span class="string">"1880:1880"</span>]
+    depends_on: [mosquitto, influxdb]
+
+  grafana:           <span class="comment"># optional: professional dashboard</span>
+    image: grafana/grafana:latest
+    ports: [<span class="string">"3000:3000"</span>]
+    depends_on: [influxdb]</pre>
+      <p>Also create <code>mosquitto.conf</code> in the same folder:</p>
+      <pre>listener 1883
+allow_anonymous true</pre>
+      <p>Then run: <code>docker-compose up -d</code></p>
+      <p>After 30 seconds: Node-RED is at <code>http://localhost:1880</code> · InfluxDB at <code>http://localhost:8086</code> · Grafana at <code>http://localhost:3000</code></p>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">07</div>
+    <div class="step-content">
+      <div class="step-title">Build the Node-RED flow</div>
+      <div class="step-sub">visual programming, no code needed</div>
+      <p>In Node-RED (<code>localhost:1880</code>), create this flow by dragging nodes:</p>
+      <ol>
+        <li><strong>MQTT In node</strong> → topic: <code>solar/sensors</code>, server: <code>localhost:1883</code></li>
+        <li><strong>JSON node</strong> → parses the incoming message string to an object</li>
+        <li><strong>Function node</strong> → adds a timestamp field</li>
+        <li><strong>InfluxDB Out node</strong> → measurement: <code>sensor_readings</code>, host: <code>influxdb:8086</code></li>
+      </ol>
+      <p>That's it. Every MQTT message from your ESP32 is now automatically stored in InfluxDB. Node-RED also has a built-in dashboard (install <code>node-red-dashboard</code> palette) for quick visualisation during testing.</p>
+    </div>
+  </div>
+
+  <!-- ─── PHASE 4 ─── -->
+  <h2 id="phase4">5 · Phase 4 — AI decision controller</h2>
+
+  <div class="phase-block phase-3">
+    <div class="phase-label">Phase 4 · estimated time: 1–2 weeks · this is the core of your project</div>
+    <p>A Python script that runs on a schedule, reads the latest sensor data + market price + weather forecast, applies decision logic, and publishes a command.</p>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">08</div>
+    <div class="step-content">
+      <div class="step-title">Install Python dependencies</div>
+      <div class="step-sub">one-time setup</div>
+      <pre>pip install influxdb-client paho-mqtt requests schedule pulp</pre>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">09</div>
+    <div class="step-content">
+      <div class="step-title">Build the decision controller — start with rules, upgrade to optimization</div>
+      <div class="step-sub">Python · ai_controller.py</div>
+      <pre><span class="comment">"""
+SolarAI Decision Controller — v1.0 (rule-based)
+Runs every 15 minutes via schedule.
+Reads: InfluxDB (sensors) + SMARD API (price) + OpenWeatherMap (forecast)
+Writes: MQTT command topic
+"""</span>
+
+<span class="keyword">import</span> paho.mqtt.client as mqtt
+<span class="keyword">import</span> requests, schedule, time, json
+<span class="keyword">from</span> influxdb_client <span class="keyword">import</span> InfluxDBClient
+<span class="keyword">from</span> datetime <span class="keyword">import</span> datetime
+
+<span class="comment"># ── CONFIG ───────────────────────────────────</span>
+INFLUX_URL    = <span class="string">"http://localhost:8086"</span>
+INFLUX_TOKEN  = <span class="string">"your-influx-token"</span>  <span class="comment"># from InfluxDB UI</span>
+INFLUX_ORG    = <span class="string">"solarai"</span>
+INFLUX_BUCKET = <span class="string">"energy_data"</span>
+MQTT_BROKER   = <span class="string">"localhost"</span>
+MQTT_CMD      = <span class="string">"solar/command"</span>
+OWM_API_KEY   = <span class="string">"your-openweathermap-key"</span>
+LOCATION      = <span class="string">"Regensburg,DE"</span>
+
+<span class="comment"># ── THRESHOLDS (match your Excel Sheet 4) ────</span>
+SELL_PRICE_MIN  = <span class="number">0.28</span>   <span class="comment"># €/kWh</span>
+SELL_SOC_MIN    = <span class="number">0.70</span>   <span class="comment"># 70% battery</span>
+STORE_SOC_MAX   = <span class="number">0.80</span>
+STORE_THERM_MAX = <span class="number">75</span>     <span class="comment"># °C</span>
+USE_PRICE_MAX   = <span class="number">0.18</span>
+IMPORT_SOC_MIN  = <span class="number">0.20</span>
+
+<span class="keyword">def</span> get_latest_sensors():
+    <span class="comment">"""Read latest sensor values from InfluxDB."""</span>
+    client = InfluxDBClient(url=INFLUX_URL, token=INFLUX_TOKEN, org=INFLUX_ORG)
+    query = <span class="string">'''
+    from(bucket: "energy_data")
+      |> range(start: -5m)
+      |> filter(fn: (r) => r._measurement == "sensor_readings")
+      |> last()
+    '''</span>
+    tables = client.query_api().query(query)
+    sensors = {}
+    <span class="keyword">for</span> table <span class="keyword">in</span> tables:
+        <span class="keyword">for</span> record <span class="keyword">in</span> table.records:
+            sensors[record.get_field()] = record.get_value()
+    <span class="keyword">return</span> sensors
+
+<span class="keyword">def</span> get_spot_price():
+    <span class="comment">"""Fetch current electricity price from SMARD (Bundesnetzagentur)."""</span>
+    <span class="comment"># SMARD API: https://www.smard.de/en/developer-tools</span>
+    <span class="comment"># For prototype, use a simple approximation or cached value</span>
+    url = <span class="string">"https://api.smard.de/app/chart_data/4169/DE/index_quarterhour.json"</span>
+    <span class="keyword">try</span>:
+        r = requests.get(url, timeout=<span class="number">5</span>)
+        data = r.json()
+        latest = data[<span class="string">'timestamps'</span>][-<span class="number">1</span>]
+        price_eur_mwh = data[<span class="string">'series'</span>][-<span class="number">1</span>][<span class="number">1</span>]
+        <span class="keyword">return</span> price_eur_mwh / <span class="number">1000</span>  <span class="comment"># convert MWh → kWh</span>
+    <span class="keyword">except</span>:
+        <span class="keyword">return</span> <span class="number">0.25</span>  <span class="comment"># fallback if API down</span>
+
+<span class="keyword">def</span> get_solar_forecast():
+    <span class="comment">"""Get cloud cover for next 6h from OpenWeatherMap."""</span>
+    url = f<span class="string">"https://api.openweathermap.org/data/2.5/forecast?q={LOCATION}&appid={OWM_API_KEY}"</span>
+    <span class="keyword">try</span>:
+        r = requests.get(url, timeout=<span class="number">5</span>)
+        forecasts = r.json()[<span class="string">'list'</span>][:<span class="number">2</span>]  <span class="comment"># next 6h (2 x 3h slots)</span>
+        avg_cloud = sum(f[<span class="string">'clouds'</span>][<span class="string">'all'</span>] <span class="keyword">for</span> f <span class="keyword">in</span> forecasts) / len(forecasts)
+        <span class="keyword">return</span> avg_cloud  <span class="comment"># 0–100, 100 = fully cloudy</span>
+    <span class="keyword">except</span>:
+        <span class="keyword">return</span> <span class="number">50</span>  <span class="comment"># fallback</span>
+
+<span class="keyword">def</span> decide(sensors, spot_price, cloud_cover):
+    <span class="comment">"""
+    Rule-based decision engine.
+    Returns: ('SELL'|'STORE'|'USE', reason_string)
+    """</span>
+    soc   = sensors.get(<span class="string">'battery_soc'</span>, <span class="number">0.5</span>)
+    solar = sensors.get(<span class="string">'solar_kw'</span>, <span class="number">0</span>)
+    therm = sensors.get(<span class="string">'thermal_temp'</span>, <span class="number">60</span>)
+    load  = sensors.get(<span class="string">'home_load_kw'</span>, <span class="number">1.5</span>)
+
+    <span class="comment"># Priority 1: Safety — import if battery critically low</span>
+    <span class="keyword">if</span> soc &lt; IMPORT_SOC_MIN:
+        <span class="keyword">return</span> <span class="string">"USE"</span>, <span class="string">"Battery critically low — use stored + import"</span>
+
+    <span class="comment"># Priority 2: Sell — price is high and we have enough stored</span>
+    <span class="keyword">if</span> spot_price &gt; SELL_PRICE_MIN <span class="keyword">and</span> soc &gt; SELL_SOC_MIN:
+        <span class="keyword">return</span> <span class="string">"SELL"</span>, f<span class="string">"Price €{spot_price:.3f} > threshold, SOC {soc*100:.0f}%"</span>
+
+    <span class="comment"># Priority 3: Store — solar surplus and storage not full</span>
+    <span class="keyword">if</span> solar &gt; load <span class="keyword">and</span> soc &lt; STORE_SOC_MAX:
+        <span class="keyword">return</span> <span class="string">"STORE"</span>, f<span class="string">"Solar surplus {solar-load:.1f}kW, charging battery"</span>
+
+    <span class="comment"># Priority 4: Heat thermal store if solar available</span>
+    <span class="keyword">if</span> solar &gt; <span class="number">0.5</span> <span class="keyword">and</span> therm &lt; STORE_THERM_MAX:
+        <span class="keyword">return</span> <span class="string">"STORE"</span>, f<span class="string">"Solar available, heating thermal to {STORE_THERM_MAX}°C"</span>
+
+    <span class="comment"># Priority 5: Use stored — low price or cloudy forecast</span>
+    <span class="keyword">if</span> spot_price &lt; USE_PRICE_MAX <span class="keyword">or</span> cloud_cover &gt; <span class="number">70</span>:
+        <span class="keyword">return</span> <span class="string">"USE"</span>, <span class="string">"Low price or cloudy forecast — draw from storage"</span>
+
+    <span class="comment"># Default: use what solar provides, no action</span>
+    <span class="keyword">return</span> <span class="string">"USE"</span>, <span class="string">"Default — consuming available solar"</span>
+
+<span class="keyword">def</span> run_controller():
+    sensors    = get_latest_sensors()
+    spot_price = get_spot_price()
+    cloud_cover = get_solar_forecast()
+    decision, reason = decide(sensors, spot_price, cloud_cover)
+
+    payload = json.dumps({
+        <span class="string">"decision"</span>:   decision,
+        <span class="string">"reason"</span>:     reason,
+        <span class="string">"price"</span>:      spot_price,
+        <span class="string">"timestamp"</span>:  datetime.utcnow().isoformat()
+    })
+
+    client = mqtt.Client()
+    client.connect(MQTT_BROKER, <span class="number">1883</span>)
+    client.publish(MQTT_CMD, payload)
+    client.disconnect()
+    print(f<span class="string">"[{datetime.now().strftime('%H:%M')}] Decision: {decision} — {reason}"</span>)
+
+<span class="comment"># Run every 15 minutes</span>
+schedule.every(<span class="number">15</span>).minutes.do(run_controller)
+run_controller()  <span class="comment"># run once immediately on start</span>
+<span class="keyword">while</span> True:
+    schedule.run_pending()
+    time.sleep(<span class="number">1</span>)</pre>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <span class="callout-icon">ℹ</span>
+    <span><strong>Upgrading to optimization later:</strong> Once the rule-based version works, replace the <code>decide()</code> function with a linear programming optimizer using <code>PuLP</code>. It will maximize revenue over a 24h horizon given forecast prices and solar predictions. This is the step that makes it a true AI controller.</span>
+  </div>
+
+  <!-- ─── PHASE 5 ─── -->
+  <h2 id="phase5">6 · Phase 5 — Dashboard</h2>
+
+  <div class="phase-block phase-3">
+    <div class="phase-label">Phase 5 · estimated time: 2–3 days</div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">10</div>
+    <div class="step-content">
+      <div class="step-title">Option A — Use the provided dashboard (immediate)</div>
+      <div class="step-sub">the <code>solar_dashboard.html</code> file provided in this package</div>
+      <p>Open the HTML file directly in any browser. No server needed. For the prototype phase, you can update the data arrays manually or connect it to your InfluxDB using the InfluxDB HTTP API (fetch from JavaScript). The file is fully self-contained — no external dependencies except Google Fonts and Chart.js CDN.</p>
+      <p>To connect it to live data: replace the hardcoded arrays at the top of the script with <code>fetch()</code> calls to your InfluxDB REST API (<code>http://localhost:8086/api/v2/query</code>).</p>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">11</div>
+    <div class="step-content">
+      <div class="step-title">Option B — Grafana (recommended for long-term)</div>
+      <div class="step-sub">already running at localhost:3000</div>
+      <ol>
+        <li>Login to Grafana (<code>localhost:3000</code>, user: admin / admin)</li>
+        <li>Configuration → Data Sources → Add InfluxDB → set URL to <code>http://influxdb:8086</code></li>
+        <li>Create a new Dashboard → Add Panel → query your <code>sensor_readings</code> measurement</li>
+        <li>Grafana has a drag-and-drop panel builder — you can recreate the entire dashboard visually</li>
+      </ol>
+      <div class="callout callout-success">
+        <span class="callout-icon">✓</span>
+        <span>Grafana is what real energy management systems use in production. Learning it now transfers directly to your professional work at Aumovio/Continental.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── PHASE 6 ─── -->
+  <h2 id="phase6">7 · Phase 6 — External data sources</h2>
+
+  <div class="step-row">
+    <div class="step-num">12</div>
+    <div class="step-content">
+      <div class="step-title">Connect to German electricity market prices (SMARD)</div>
+      <div class="step-sub">free · official Bundesnetzagentur data</div>
+      <p>SMARD (Strommarktdaten) is the official platform of the Federal Network Agency. It provides real-time and historical Day-Ahead and Intraday electricity prices in Germany at 15-minute resolution.</p>
+      <ul>
+        <li>API documentation: <a href="https://www.smard.de/en/developer-tools">smard.de/en/developer-tools</a></li>
+        <li>The API is completely free, no API key required</li>
+        <li>Data is updated every 15 minutes — perfect for your control cycle</li>
+        <li>Key endpoint: <code>https://www.smard.de/app/chart_data/4169/DE/</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="step-row">
+    <div class="step-num">13</div>
+    <div class="step-content">
+      <div class="step-title">Connect to solar irradiance forecast</div>
+      <div class="step-sub">OpenWeatherMap free tier · 1000 calls/day</div>
+      <ul>
+        <li>Register at <a href="https://openweathermap.org/api">openweathermap.org/api</a> → free tier is enough</li>
+        <li>Use the <strong>One Call API 3.0</strong> — it gives hourly cloud cover, GHI (Global Horizontal Irradiance), and UV index for 48h ahead</li>
+        <li>For more precise solar forecasting later, look at <strong>Solcast</strong> (free tier for researchers) which gives direct solar irradiance forecasts on rooftop level</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- ─── PHASE 7 ─── -->
+  <h2 id="phase7">8 · Phase 7 — Scalability path</h2>
+
+  <div class="phase-block phase-4">
+    <div class="phase-label">Phase 7 · after prototype is working</div>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Prototype (now)</th><th>Scaled-up version</th></tr></thead>
+      <tbody>
+        <tr><td>1× ESP32, laptop backend</td><td>Multiple ESP32 nodes, Raspberry Pi 4 as local server</td></tr>
+        <tr><td>Rule-based Python logic</td><td>PuLP linear optimizer → Reinforcement Learning (Stable-Baselines3)</td></tr>
+        <tr><td>Single battery + thermal</td><td>Multiple storage units with individual controllers</td></tr>
+        <tr><td>Manual MQTT commands</td><td>Automated relay/contactor control via GPIO or Modbus</td></tr>
+        <tr><td>Local InfluxDB</td><td>InfluxDB Cloud or TimescaleDB on a small VPS</td></tr>
+        <tr><td>Static HTML dashboard</td><td>Grafana Cloud with alerting and mobile access</td></tr>
+        <tr><td>WiFi MQTT</td><td>Add GSM/4G module (SIM7600) for grid locations without WiFi</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ─── BOM ─── -->
+  <h2 id="bom">9 · Bill of materials (prototype)</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Item</th><th>Purpose</th><th>Source</th><th>Price (est.)</th><th>Status</th></tr></thead>
+      <tbody>
+        <tr><td>ESP32 DevKit v1</td><td>Edge controller</td><td>Amazon.de / Berrybase.de</td><td>€8</td><td><span class="badge badge-required">required</span></td></tr>
+        <tr><td>SCT-013-030 (30A)</td><td>Solar current sensor</td><td>Amazon.de / AliExpress</td><td>€6</td><td><span class="badge badge-required">required</span></td></tr>
+        <tr><td>PZEM-004T v3</td><td>Grid energy meter</td><td>Amazon.de</td><td>€9</td><td><span class="badge badge-required">required</span></td></tr>
+        <tr><td>DS18B20 waterproof</td><td>Thermal store temp</td><td>Amazon.de</td><td>€3</td><td><span class="badge badge-required">required</span></td></tr>
+        <tr><td>BH1750 module</td><td>Solar irradiance</td><td>Amazon.de / AZ-Delivery</td><td>€3</td><td><span class="badge badge-required">required</span></td></tr>
+        <tr><td>DHT22 module</td><td>Ambient temperature</td><td>Amazon.de</td><td>€5</td><td><span class="badge badge-required">required</span></td></tr>
+        <tr><td>Breadboard + jumper wires</td><td>Prototyping</td><td>Amazon.de</td><td>€8</td><td><span class="badge badge-required">required</span></td></tr>
+        <tr><td>5V relay module (4ch)</td><td>Switching loads/grid</td><td>Amazon.de</td><td>€5</td><td><span class="badge badge-required">required</span></td></tr>
+        <tr><td>Raspberry Pi 4 (2GB)</td><td>Dedicated backend server</td><td>Berrybase.de</td><td>€55</td><td><span class="badge badge-optional">optional</span></td></tr>
+        <tr><td>Docker Desktop</td><td>Run backend stack</td><td>docker.com</td><td>€0</td><td><span class="badge badge-free">free</span></td></tr>
+        <tr><td>Node-RED + InfluxDB + Grafana</td><td>Backend stack</td><td>via Docker</td><td>€0</td><td><span class="badge badge-free">free</span></td></tr>
+        <tr><td>SMARD API (electricity prices)</td><td>Market data</td><td>smard.de</td><td>€0</td><td><span class="badge badge-free">free</span></td></tr>
+        <tr><td>OpenWeatherMap API</td><td>Weather forecast</td><td>openweathermap.org</td><td>€0</td><td><span class="badge badge-free">free</span></td></tr>
+        <tr><td><strong>Total hardware</strong></td><td></td><td></td><td><strong>~€47</strong></td><td></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ─── RESOURCES ─── -->
+  <h2 id="resources">10 · Where to find everything</h2>
+
+  <h3>Hardware</h3>
+  <ul>
+    <li><strong>Berrybase.de</strong> — best German source for ESP32, Raspberry Pi, and sensors. Faster shipping than AliExpress.</li>
+    <li><strong>AZ-Delivery.de</strong> — good quality modules with German documentation and Arduino examples included.</li>
+    <li><strong>Amazon.de</strong> — for anything time-sensitive with Prime delivery.</li>
+  </ul>
+
+  <h3>Learning resources</h3>
+  <ul>
+    <li><strong>ESP32 + MQTT + Node-RED:</strong> Search "ESP32 MQTT Node-RED InfluxDB tutorial" on YouTube — Andreas Spiess channel has excellent videos on exactly this stack.</li>
+    <li><strong>InfluxDB basics:</strong> docs.influxdata.com/influxdb/v2 — the official docs are very good.</li>
+    <li><strong>PuLP optimization:</strong> "PuLP linear programming Python tutorial" — used for battery scheduling optimization.</li>
+    <li><strong>Grafana dashboards:</strong> grafana.com/tutorials — the beginner tutorial with InfluxDB takes ~2 hours.</li>
+  </ul>
+
+  <h3>German-specific resources</h3>
+  <ul>
+    <li><strong>SMARD API:</strong> smard.de/en/developer-tools — German electricity market data, completely free.</li>
+    <li><strong>Bundesnetzagentur Monitoringbericht</strong> — good reference for German grid regulations and feed-in tariff (Einspeisevergütung) structure.</li>
+    <li><strong>EEG 2023 (Erneuerbare-Energien-Gesetz)</strong> — the legal framework for solar feed-in in Germany. Important to understand before scaling up.</li>
+  </ul>
+
+  <div class="callout callout-success">
+    <span class="callout-icon">✓</span>
+    <span><strong>Suggested order of attack:</strong> Phase 1 (buy hardware) → Phase 3 (get backend running with mock data) → Phase 2 (connect ESP32) → Phase 4 (build controller) → Phase 5/6 (dashboard + APIs). Getting the backend running first means you can test everything with simulated data before any hardware arrives.</span>
+  </div>
+
+  <footer>
+    SolarAI Controller — Build Guide v1.0 · Generated for Industrial Engineering Final Year Project · Germany
+  </footer>
+</div>
+</body>
+</html>

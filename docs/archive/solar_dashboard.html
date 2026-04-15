@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Solar Energy Management Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0d0f14;
+    --surface:   #141720;
+    --surface2:  #1c2030;
+    --border:    rgba(255,255,255,0.07);
+    --border2:   rgba(255,255,255,0.13);
+    --text:      #e8eaf0;
+    --muted:     #7a8090;
+    --solar:     #f5c542;
+    --grid-sell: #4ade80;
+    --store:     #60a5fa;
+    --consume:   #f87171;
+    --thermal:   #fb923c;
+    --accent:    #f5c542;
+    --mono:      'IBM Plex Mono', monospace;
+    --sans:      'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-icon {
+    width: 32px; height: 32px;
+    background: var(--solar);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+
+  .logo-text { font-size: 16px; font-weight: 600; letter-spacing: -0.3px; }
+  .logo-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+
+  .header-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+
+  .ai-mode {
+    display: flex; align-items: center; gap: 8px;
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 8px;
+    padding: 7px 14px;
+    font-size: 12px;
+  }
+
+  .pulse {
+    width: 8px; height: 8px; border-radius: 50%;
+    animation: pulse 2s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(0.85); }
+  }
+
+  .mode-sell  { background: var(--grid-sell); }
+  .mode-store { background: var(--store); }
+  .mode-use   { background: var(--thermal); }
+
+  .last-update { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+
+  .section-title {
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    margin-bottom: 12px;
+    margin-top: 28px;
+  }
+
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+  }
+
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    transition: border-color 0.2s;
+  }
+
+  .kpi:hover { border-color: var(--border2); }
+
+  .kpi-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 8px;
+    font-family: var(--mono);
+  }
+
+  .kpi-value {
+    font-size: 24px;
+    font-weight: 500;
+    line-height: 1;
+    color: var(--text);
+  }
+
+  .kpi-unit { font-size: 13px; color: var(--muted); margin-left: 3px; }
+
+  .kpi-delta {
+    font-size: 11px;
+    margin-top: 6px;
+    font-family: var(--mono);
+  }
+
+  .pos { color: var(--grid-sell); }
+  .neg { color: var(--consume); }
+  .neu { color: var(--muted); }
+
+  .charts-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+  }
+
+  .card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .card-title { font-size: 13px; font-weight: 500; }
+  .card-sub { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  .tab-row { display: flex; gap: 4px; }
+
+  .tab-btn {
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: var(--mono);
+    transition: all 0.15s;
+  }
+
+  .tab-btn.active, .tab-btn:hover {
+    background: var(--surface2);
+    border-color: var(--border2);
+    color: var(--text);
+  }
+
+  .chart-container { position: relative; width: 100%; }
+
+  .legend-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    margin-bottom: 12px;
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .legend-dot {
+    width: 8px; height: 8px;
+    border-radius: 2px;
+    flex-shrink: 0;
+  }
+
+  .sensor-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 8px;
+  }
+
+  .sensor-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+  }
+
+  .sensor-left { display: flex; align-items: center; gap: 8px; }
+  .sensor-dot { width: 6px; height: 6px; border-radius: 50%; }
+  .sensor-name { font-size: 12px; color: var(--muted); }
+  .sensor-val { font-size: 13px; font-weight: 500; font-family: var(--mono); }
+  .sensor-unit { font-size: 11px; color: var(--muted); margin-left: 2px; }
+
+  .table-wrap { overflow-x: auto; }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+  }
+
+  thead tr { border-bottom: 1px solid var(--border2); }
+
+  th {
+    text-align: left;
+    padding: 8px 10px;
+    color: var(--muted);
+    font-weight: 500;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--surface2); }
+
+  .tag {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 500;
+    font-family: var(--mono);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .tag-sell  { background: rgba(74,222,128,0.12); color: var(--grid-sell); }
+  .tag-store { background: rgba(96,165,250,0.12); color: var(--store); }
+  .tag-use   { background: rgba(251,146,60,0.15); color: var(--thermal); }
+
+  .donut-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    height: 100%;
+    justify-content: center;
+  }
+
+  .donut-labels {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    width: 100%;
+    margin-top: 8px;
+  }
+
+  .donut-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 12px;
+  }
+
+  .donut-label-left {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--muted);
+    font-family: var(--mono);
+  }
+
+  .donut-pct { font-weight: 500; font-family: var(--mono); color: var(--text); }
+
+  .week-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-top: 12px;
+  }
+
+  .ai-logic-card {
+    background: var(--surface2);
+    border: 1px solid var(--border2);
+    border-radius: 10px;
+    padding: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    line-height: 1.8;
+  }
+
+  .rule { display: flex; gap: 8px; align-items: flex-start; }
+  .rule-cond { color: var(--store); }
+  .rule-arrow { color: var(--muted); }
+  .rule-action { color: var(--solar); }
+
+  .footer {
+    text-align: center;
+    padding: 24px;
+    font-size: 11px;
+    color: var(--muted);
+    font-family: var(--mono);
+    border-top: 1px solid var(--border);
+    margin-top: 32px;
+  }
+
+  @media (max-width: 768px) {
+    .charts-row { grid-template-columns: 1fr; }
+    .week-grid { grid-template-columns: 1fr; }
+    main { padding: 16px; }
+    header { padding: 14px 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">☀</div>
+    <div>
+      <div class="logo-text">SolarAI Controller</div>
+      <div class="logo-sub">prototype · 6-sensor system</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="ai-mode">
+      <span class="pulse mode-sell" id="mode-dot"></span>
+      <span style="color:#7a8090;font-family:var(--mono);">AI decision:</span>
+      <span id="ai-mode-label" style="font-weight:500;">Selling to grid</span>
+      <span id="mode-reason" style="color:var(--muted);font-family:var(--mono);">— spot high €0.31</span>
+    </div>
+    <div class="last-update" id="last-update">Updated: --:--:--</div>
+  </div>
+</header>
+
+<main>
+
+  <!-- KPI ROW -->
+  <div class="section-title">Today's summary</div>
+  <div class="kpi-grid" id="kpi-grid"></div>
+
+  <!-- SENSORS -->
+  <div class="section-title">Live sensor readings</div>
+  <div class="sensor-grid" id="sensor-grid"></div>
+
+  <!-- MAIN CHARTS ROW -->
+  <div class="section-title">Energy flow — 24h</div>
+  <div class="charts-row">
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Generation / Consumption / Storage</div>
+          <div class="card-sub" id="chart-subtitle">kW per hour</div>
+        </div>
+        <div class="tab-row">
+          <button class="tab-btn active" onclick="switchChart('energy',this)">Energy</button>
+          <button class="tab-btn" onclick="switchChart('price',this)">Price</button>
+          <button class="tab-btn" onclick="switchChart('storage',this)">Storage</button>
+        </div>
+      </div>
+      <div class="legend-row" id="main-legend"></div>
+      <div class="chart-container" style="height:230px;"><canvas id="mainChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Energy distribution</div>
+          <div class="card-sub">today's total</div>
+        </div>
+      </div>
+      <div class="donut-wrap">
+        <div class="chart-container" style="height:160px;width:160px;"><canvas id="donutChart"></canvas></div>
+        <div class="donut-labels" id="donut-labels"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- WEEK CHARTS -->
+  <div class="section-title">Weekly overview</div>
+  <div class="week-grid">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Daily energy (kWh)</div>
+      </div>
+      <div class="chart-container" style="height:160px;"><canvas id="weekChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">Daily revenue (€)</div>
+      </div>
+      <div class="chart-container" style="height:160px;"><canvas id="revenueChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- AI DECISION RULES -->
+  <div class="section-title">AI decision logic</div>
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title">Current rule set — rule-based controller v1.0</div>
+      <div class="card-sub">runs every 15 min · inputs: price, SOC, solar forecast, thermal temp</div>
+    </div>
+    <div class="ai-logic-card">
+      <div class="rule"><span class="rule-cond">IF spot_price &gt; €0.28/kWh AND battery_SOC &gt; 70%</span> <span class="rule-arrow">→</span> <span class="rule-action">SELL to grid</span></div>
+      <div class="rule"><span class="rule-cond">IF solar_output &gt; home_load AND battery_SOC &lt; 80% AND thermal_temp &lt; 75°C</span> <span class="rule-arrow">→</span> <span class="rule-action">STORE (battery + thermal)</span></div>
+      <div class="rule"><span class="rule-cond">IF spot_price &lt; €0.18/kWh OR forecast_irradiance &lt; 200 W/m² next 6h</span> <span class="rule-arrow">→</span> <span class="rule-action">USE stored energy</span></div>
+      <div class="rule"><span class="rule-cond">IF thermal_temp &lt; 55°C AND solar_surplus &gt; 0</span> <span class="rule-arrow">→</span> <span class="rule-action">HEAT thermal store (priority)</span></div>
+      <div class="rule"><span class="rule-cond">IF battery_SOC &lt; 20%</span> <span class="rule-arrow">→</span> <span class="rule-action">GRID IMPORT (fallback — low priority)</span></div>
+    </div>
+  </div>
+
+  <!-- DECISION LOG TABLE -->
+  <div class="section-title">AI decision log — last 12 cycles (15 min intervals)</div>
+  <div class="card">
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Timestamp</th>
+            <th>Decision</th>
+            <th>Spot price (€/kWh)</th>
+            <th>Solar (kW)</th>
+            <th>Batt. SOC (%)</th>
+            <th>Thermal (°C)</th>
+            <th>Irradiance (W/m²)</th>
+            <th>Energy flow (kWh)</th>
+            <th>Revenue (€)</th>
+            <th>Trigger rule</th>
+          </tr>
+        </thead>
+        <tbody id="log-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+</main>
+
+<div class="footer">
+  SolarAI Controller — Prototype v0.1 · Data simulated for dashboard testing · 6 sensors · MQTT-ready
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script>
+/* ─── DATA GENERATION ─── */
+function rnd(min, max, dec = 1) {
+  return parseFloat((Math.random() * (max - min) + min).toFixed(dec));
+}
+
+const hours = Array.from({length: 24}, (_, i) => `${String(i).padStart(2,'0')}:00`);
+
+const solarProfile  = [0,0,0,0,0,0.3,1.0,2.4,3.9,5.1,6.0,6.4,6.2,5.6,4.7,3.3,1.9,0.7,0.1,0,0,0,0,0];
+const priceProfile  = [0.18,0.17,0.16,0.15,0.15,0.16,0.20,0.23,0.26,0.28,0.29,0.27,0.25,0.24,0.25,0.27,0.30,0.32,0.34,0.31,0.28,0.25,0.22,0.20];
+const socProfile    = [72,68,65,61,58,56,55,57,62,69,75,81,84,82,78,72,70,74,80,76,72,69,66,64];
+
+const solarData   = solarProfile.map(v => Math.max(0, parseFloat((v + rnd(-0.25, 0.25)).toFixed(2))));
+const priceData   = priceProfile.map(v => parseFloat((v + rnd(-0.01, 0.01, 3)).toFixed(3)));
+const socData     = socProfile.map(v => Math.min(100, Math.max(5, Math.round(v + rnd(-3, 3, 0)))));
+const homeLoad    = hours.map(() => rnd(0.9, 2.3));
+const thermalTemp = socProfile.map(v => Math.round(55 + (v - 55) * 0.3 + rnd(-3, 5, 0)));
+
+/* ─── TIMESTAMPS ─── */
+const now = new Date();
+document.getElementById('last-update').textContent = 'Updated: ' + now.toLocaleTimeString('de-DE');
+
+/* ─── KPIs ─── */
+const kpis = [
+  { label: 'Solar collected',  value: '28.4', unit: 'kWh', delta: '+12% vs yesterday', cls: 'pos' },
+  { label: 'Thermal stored',   value: '41.2', unit: 'kWh', delta: '~3.1 days capacity', cls: 'neu' },
+  { label: 'Battery stored',   value: '9.8',  unit: 'kWh', delta: '78% SOC now',        cls: 'neu' },
+  { label: 'Home consumed',    value: '11.6', unit: 'kWh', delta: 'incl. heat load',    cls: 'neu' },
+  { label: 'Sold to grid',     value: '14.2', unit: 'kWh', delta: '€4.40 revenue',      cls: 'pos' },
+  { label: 'Grid revenue',     value: '€4.40', unit: '',   delta: 'avg €0.31/kWh',      cls: 'pos' },
+  { label: 'CO₂ avoided',      value: '11.3', unit: 'kg',  delta: '0.4 kg/kWh factor', cls: 'pos' },
+  { label: 'Self-sufficiency', value: '81',   unit: '%',   delta: 'grid independence',  cls: 'pos' },
+];
+
+const kg = document.getElementById('kpi-grid');
+kpis.forEach(k => {
+  kg.innerHTML += `<div class="kpi">
+    <div class="kpi-label">${k.label}</div>
+    <div class="kpi-value">${k.value}<span class="kpi-unit">${k.unit}</span></div>
+    <div class="kpi-delta ${k.cls}">${k.delta}</div>
+  </div>`;
+});
+
+/* ─── SENSORS ─── */
+const sensors = [
+  { name: 'Solar panel output', val: '5.2', unit: 'kW',      color: '#f5c542' },
+  { name: 'Battery SOC',        val: '78',  unit: '%',       color: '#60a5fa' },
+  { name: 'Thermal store temp', val: '74',  unit: '°C',      color: '#fb923c' },
+  { name: 'Grid spot price',    val: '0.31',unit: '€/kWh',   color: '#4ade80' },
+  { name: 'Home consumption',   val: '1.4', unit: 'kW',      color: '#a78bfa' },
+  { name: 'Irradiance',         val: '720', unit: 'W/m²',    color: '#f5c542' },
+];
+
+const sg = document.getElementById('sensor-grid');
+sensors.forEach(s => {
+  sg.innerHTML += `<div class="sensor-row">
+    <div class="sensor-left">
+      <div class="sensor-dot" style="background:${s.color}"></div>
+      <span class="sensor-name">${s.name}</span>
+    </div>
+    <span class="sensor-val">${s.val}<span class="sensor-unit">${s.unit}</span></span>
+  </div>`;
+});
+
+/* ─── MAIN CHART ─── */
+let mainChart = null;
+
+const chartDefs = {
+  energy: {
+    sub: 'kW per hour',
+    legend: [
+      { color: '#f5c542', label: 'Solar generation' },
+      { color: '#60a5fa', label: 'Home consumption' },
+    ],
+    datasets: [
+      { label: 'Solar generation', data: solarData,  borderColor: '#f5c542', backgroundColor: 'rgba(245,197,66,0.08)',  fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 },
+      { label: 'Home consumption', data: homeLoad,   borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.08)',  fill: true, tension: 0.4, pointRadius: 0, borderWidth: 2 },
+    ]
+  },
+  price: {
+    sub: '€/kWh spot price',
+    legend: [{ color: '#4ade80', label: 'Spot price (€/kWh)' }],
+    datasets: [
+      { label: 'Spot price', data: priceData, borderColor: '#4ade80', backgroundColor: 'rgba(74,222,128,0.08)', fill: true, tension: 0.3, pointRadius: 0, borderWidth: 2 },
+    ]
+  },
+  storage: {
+    sub: '% state of charge',
+    legend: [
+      { color: '#60a5fa', label: 'Battery SOC (%)' },
+      { color: '#fb923c', label: 'Thermal temp (°C)' },
+    ],
+    datasets: [
+      { label: 'Battery SOC',   data: socData,     borderColor: '#60a5fa', backgroundColor: 'rgba(96,165,250,0.08)',  fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2, yAxisID: 'y' },
+      { label: 'Thermal °C',    data: thermalTemp, borderColor: '#fb923c', backgroundColor: 'rgba(251,146,60,0.08)',  fill: false, tension: 0.3, pointRadius: 0, borderWidth: 2, yAxisID: 'y2' },
+    ]
+  }
+};
+
+function buildLegend(type) {
+  const el = document.getElementById('main-legend');
+  el.innerHTML = chartDefs[type].legend.map(l =>
+    `<div class="legend-item"><span class="legend-dot" style="background:${l.color}"></span>${l.label}</div>`
+  ).join('');
+}
+
+function renderMainChart(type) {
+  if (mainChart) mainChart.destroy();
+  document.getElementById('chart-subtitle').textContent = chartDefs[type].sub;
+  buildLegend(type);
+
+  const scales = {
+    x: { ticks: { color: '#7a8090', font: { size: 10, family: "'IBM Plex Mono'" }, autoSkip: true, maxTicksLimit: 8 }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { color: 'rgba(255,255,255,0.07)' } },
+    y: { ticks: { color: '#7a8090', font: { size: 10, family: "'IBM Plex Mono'" } }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { color: 'rgba(255,255,255,0.07)' } }
+  };
+
+  if (type === 'storage') {
+    scales.y2 = { position: 'right', ticks: { color: '#fb923c', font: { size: 10 } }, grid: { display: false }, border: { color: 'rgba(255,255,255,0.07)' } };
+  }
+
+  mainChart = new Chart(document.getElementById('mainChart'), {
+    type: 'line',
+    data: { labels: hours, datasets: chartDefs[type].datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales,
+      animation: { duration: 300 }
+    }
+  });
+}
+
+renderMainChart('energy');
+
+function switchChart(type, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderMainChart(type);
+}
+
+/* ─── DONUT CHART ─── */
+const donutData = { sold: 14.2, consumed: 11.6, thermalStored: 41.2, battStored: 9.8 };
+const total = Object.values(donutData).reduce((a, b) => a + b, 0);
+
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Sold to grid', 'Home consumed', 'Thermal stored', 'Battery stored'],
+    datasets: [{
+      data: Object.values(donutData),
+      backgroundColor: ['#4ade80', '#f87171', '#fb923c', '#60a5fa'],
+      borderColor: '#141720',
+      borderWidth: 3
+    }]
+  },
+  options: {
+    responsive: true, maintainAspectRatio: false,
+    plugins: { legend: { display: false }, tooltip: { callbacks: { label: ctx => ` ${ctx.parsed.toFixed(1)} kWh (${(ctx.parsed/total*100).toFixed(0)}%)` } } },
+    cutout: '60%'
+  }
+});
+
+const donutColors = ['#4ade80','#f87171','#fb923c','#60a5fa'];
+const donutLabels = ['Sold','Consumed','Thermal','Battery'];
+const dl = document.getElementById('donut-labels');
+Object.values(donutData).forEach((v, i) => {
+  dl.innerHTML += `<div class="donut-label-row">
+    <div class="donut-label-left"><span class="legend-dot" style="background:${donutColors[i]}"></span>${donutLabels[i]}</div>
+    <span class="donut-pct">${(v/total*100).toFixed(0)}%</span>
+  </div>`;
+});
+
+/* ─── WEEK CHARTS ─── */
+const weekDays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+const weekSolar    = [22, 18, 31, 28, 26, 33, 28];
+const weekConsumed = [12, 11, 13, 14, 13, 14, 13];
+const weekSold     = [8,   5, 14, 11,  9, 15, 12];
+const weekRevenue  = [2.4, 1.5, 4.4, 3.3, 2.7, 4.8, 3.7];
+
+const weekOpts = (yLabel) => ({
+  responsive: true, maintainAspectRatio: false,
+  plugins: { legend: { display: false } },
+  scales: {
+    x: { ticks: { color: '#7a8090', font: { size: 10, family: "'IBM Plex Mono'" } }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { color: 'rgba(255,255,255,0.07)' } },
+    y: { ticks: { color: '#7a8090', font: { size: 10, family: "'IBM Plex Mono'" }, callback: v => v + yLabel }, grid: { color: 'rgba(255,255,255,0.04)' }, border: { color: 'rgba(255,255,255,0.07)' } }
+  }
+});
+
+new Chart(document.getElementById('weekChart'), {
+  type: 'bar',
+  data: {
+    labels: weekDays,
+    datasets: [
+      { label: 'Solar', data: weekSolar,    backgroundColor: 'rgba(245,197,66,0.7)', borderRadius: 4 },
+      { label: 'Consumed', data: weekConsumed, backgroundColor: 'rgba(248,113,113,0.6)', borderRadius: 4 },
+      { label: 'Sold', data: weekSold,      backgroundColor: 'rgba(74,222,128,0.7)',  borderRadius: 4 },
+    ]
+  },
+  options: weekOpts(' kWh')
+});
+
+new Chart(document.getElementById('revenueChart'), {
+  type: 'bar',
+  data: {
+    labels: weekDays,
+    datasets: [{ label: 'Revenue', data: weekRevenue, backgroundColor: 'rgba(74,222,128,0.7)', borderRadius: 4 }]
+  },
+  options: weekOpts(' €')
+});
+
+/* ─── DECISION LOG ─── */
+const decisions = ['sell','sell','store','use','store','sell','sell','sell','store','use','store','sell'];
+const triggerRules = [
+  'Price > €0.28 + SOC > 70%',
+  'Evening peak pricing',
+  'Solar surplus + SOC < 80%',
+  'Low irradiance forecast',
+  'Thermal temp < 65°C',
+  'Price spike + SOC 74%',
+  'Peak demand window',
+  'Price > €0.30',
+  'Midday solar surplus',
+  'Cloudy period forecast',
+  'SOC 58% + solar active',
+  'High price + SOC 78%'
+];
+
+const tbody = document.getElementById('log-tbody');
+for (let i = 0; i < 12; i++) {
+  const h = 23 - i;
+  const min = [0, 15, 30, 45][i % 4];
+  const timestamp = `${String(h).padStart(2,'0')}:${String(min).padStart(2,'0')}`;
+  const d = decisions[i];
+  const price  = priceData[Math.min(h, 23)];
+  const solar  = solarData[Math.min(h, 23)];
+  const soc    = socData[Math.min(h, 23)];
+  const temp   = thermalTemp[Math.min(h, 23)];
+  const irrad  = Math.round(rnd(200, 850, 0));
+  const energy = rnd(0.8, 3.2);
+  const rev    = d === 'sell' ? '€' + (energy * price).toFixed(2) : '—';
+  const tagMap = { sell: 'tag-sell', store: 'tag-store', use: 'tag-use' };
+  const labelMap = { sell: 'SELL', store: 'STORE', use: 'USE' };
+
+  tbody.innerHTML += `<tr>
+    <td style="font-family:var(--mono);color:var(--muted);">2025-06-12 ${timestamp}</td>
+    <td><span class="tag ${tagMap[d]}">${labelMap[d]}</span></td>
+    <td style="font-family:var(--mono);">€${price.toFixed(3)}</td>
+    <td style="font-family:var(--mono);">${solar.toFixed(2)}</td>
+    <td style="font-family:var(--mono);">${soc}</td>
+    <td style="font-family:var(--mono);">${temp}</td>
+    <td style="font-family:var(--mono);">${irrad}</td>
+    <td style="font-family:var(--mono);">${energy.toFixed(2)}</td>
+    <td style="font-family:var(--mono);color:${d==='sell'?'var(--grid-sell)':'var(--muted)'};">${rev}</td>
+    <td style="color:var(--muted);font-size:11px;">${triggerRules[i]}</td>
+  </tr>`;
+}
+</script>
+</body>
+</html>

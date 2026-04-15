@@ -1,0 +1,2044 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SolarAI — Energiemanagement Dashboard v7</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --bg:        #07090e;
+  --surface:   #0e1118;
+  --surface2:  #141820;
+  --surface3:  #1a1f2c;
+  --border:    rgba(255,255,255,0.05);
+  --border2:   rgba(255,255,255,0.09);
+  --border3:   rgba(255,255,255,0.14);
+  --text:      #dde1eb;
+  --text2:     #98a0b4;
+  --muted:     #52596b;
+  --solar:     #f5c300;
+  --solar2:    #fad732;
+  --sell:      #22c55e;
+  --store:     #3b82f6;
+  --use:       #f97316;
+  --warn:      #ef4444;
+  --sell-bg:   rgba(34,197,94,0.1);
+  --store-bg:  rgba(59,130,246,0.1);
+  --use-bg:    rgba(249,115,22,0.1);
+  --admin:     #a78bfa;
+  --admin-bg:  rgba(167,139,250,0.1);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  font-family: 'Syne', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  font-size: 14px;
+  background-image:
+    radial-gradient(ellipse 60% 40% at 15% 0%, rgba(245,195,0,0.04) 0%, transparent 60%),
+    radial-gradient(ellipse 50% 40% at 85% 100%, rgba(59,130,246,0.04) 0%, transparent 60%);
+}
+
+/* ── NAV / HEADER ─────────────────────────────────────────── */
+header {
+  position: sticky; top: 0; z-index: 200;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 13px 32px;
+  background: rgba(7,9,14,0.92);
+  border-bottom: 1px solid var(--border2);
+  backdrop-filter: blur(16px);
+  flex-wrap: wrap; gap: 10px;
+}
+
+.logo { display: flex; align-items: center; gap: 12px; }
+.logo-mark {
+  width: 38px; height: 38px;
+  background: var(--solar);
+  border-radius: 11px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  box-shadow: 0 0 24px rgba(245,195,0,0.35), 0 0 60px rgba(245,195,0,0.1);
+}
+.logo-name { font-size: 18px; font-weight: 800; letter-spacing: -0.5px; }
+.logo-sub { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.06em; margin-top: 1px; }
+
+/* NAV TABS */
+.nav-tabs { display: flex; gap: 2px; }
+.nav-tab {
+  padding: 6px 14px; border-radius: 7px;
+  font-size: 12px; font-family: 'JetBrains Mono', monospace;
+  color: var(--muted); cursor: pointer;
+  border: 1px solid transparent;
+  background: transparent; transition: all 0.15s;
+}
+.nav-tab:hover { color: var(--text); background: var(--surface2); border-color: var(--border2); }
+.nav-tab.active { color: var(--text); background: var(--surface2); border-color: var(--border2); }
+
+.header-clock { font-family: 'JetBrains Mono', monospace; text-align: center; }
+.clock-date { font-size: 11px; color: var(--text2); }
+.clock-time { font-size: 20px; font-weight: 500; color: var(--text); letter-spacing: 0.03em; margin-top: 1px; }
+
+.header-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+
+.ai-badge {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  border-radius: 8px; padding: 7px 14px;
+  font-size: 12px; font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; transition: border-color 0.15s;
+}
+.ai-badge:hover { border-color: var(--border3); }
+
+.pulse { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.pulse.sell  { background: var(--sell);  animation: glow-sell  2s ease-in-out infinite; }
+.pulse.store { background: var(--store); animation: glow-store 2s ease-in-out infinite; }
+.pulse.use   { background: var(--use);   animation: glow-use   2s ease-in-out infinite; }
+.pulse.admin { background: var(--admin); animation: glow-admin 2s ease-in-out infinite; }
+
+@keyframes glow-sell  { 0%,100% { box-shadow:0 0 0 0 rgba(34,197,94,0.4); }  50% { box-shadow:0 0 0 5px rgba(34,197,94,0); } }
+@keyframes glow-store { 0%,100% { box-shadow:0 0 0 0 rgba(59,130,246,0.4); } 50% { box-shadow:0 0 0 5px rgba(59,130,246,0); } }
+@keyframes glow-use   { 0%,100% { box-shadow:0 0 0 0 rgba(249,115,22,0.4); } 50% { box-shadow:0 0 0 5px rgba(249,115,22,0); } }
+@keyframes glow-admin { 0%,100% { box-shadow:0 0 0 0 rgba(167,139,250,0.4); }50% { box-shadow:0 0 0 5px rgba(167,139,250,0); } }
+
+.sys-status { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+
+/* ── PAGE SYSTEM ─────────────────────────────────────────── */
+.page { display: none; }
+.page.active { display: block; }
+
+main { max-width: 1440px; margin: 0 auto; padding: 32px 32px 72px; }
+
+.sec-label {
+  font-size: 10px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.14em;
+  color: var(--muted); margin: 36px 0 14px;
+  display: flex; align-items: center; gap: 12px;
+}
+.sec-label::after { content:''; flex:1; height:1px; background:var(--border2); }
+
+/* ── HERO ────────────────────────────────────────────────── */
+.hero { animation: fadeUp 0.55s ease both; }
+.hero-narrative {
+  font-size: 21px; font-weight: 600; line-height: 1.5;
+  color: var(--text); max-width: 860px; margin-bottom: 22px;
+  letter-spacing: -0.2px;
+}
+.n-solar { color: var(--solar); }
+.n-sell  { color: var(--sell); }
+.n-store { color: var(--store); }
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+}
+@media(max-width:1100px){ .stat-grid{ grid-template-columns: repeat(3,1fr); } }
+@media(max-width:700px) { .stat-grid{ grid-template-columns: 1fr 1fr; } }
+
+.stat-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 13px; padding: 18px 20px;
+  display: flex; flex-direction: column; gap: 5px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.stat-card:hover { border-color: var(--border3); transform: translateY(-2px); }
+
+.stat-lbl { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.stat-val { font-size: 26px; font-weight: 700; line-height: 1; font-family: 'JetBrains Mono', monospace; }
+.stat-val.c-solar { color: var(--solar); }
+.stat-val.c-sell  { color: var(--sell); }
+.stat-val.c-store { color: var(--store); }
+.stat-val.c-text  { color: var(--text); }
+.stat-unit { font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 3px; }
+.stat-sub { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.stat-sub.pos { color: var(--sell); }
+
+/* ── FINANCIAL ───────────────────────────────────────────── */
+.fin-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; animation: fadeUp 0.55s 0.08s ease both; }
+@media(max-width:900px){ .fin-grid{ grid-template-columns:1fr; } }
+
+.fin-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 26px; position: relative; overflow: hidden; transition: border-color 0.2s; }
+.fin-card:hover { border-color: var(--border2); }
+.fin-card::after { content:''; position:absolute; top:0; left:0; right:0; height:2px; }
+.fin-card.earned::after  { background: linear-gradient(90deg, var(--sell), transparent 70%); }
+.fin-card.saved::after   { background: linear-gradient(90deg, var(--store), transparent 70%); }
+.fin-card.counter::after { background: linear-gradient(90deg, var(--solar), transparent 70%); }
+
+.fin-lbl { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 10px; }
+.fin-big { font-size: 42px; font-weight: 700; font-family: 'JetBrains Mono', monospace; line-height: 1; margin-bottom: 4px; }
+.fin-card.earned .fin-big  { color: var(--sell); }
+.fin-card.saved  .fin-big  { color: var(--store); }
+.fin-card.counter .fin-big { color: var(--solar); }
+.fin-desc { font-size: 12px; color: var(--text2); line-height: 1.6; margin-top: 10px; }
+em { font-style: normal; font-weight: 600; }
+.fin-vs { display: flex; align-items: center; gap: 10px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border2); }
+.was-price { font-size: 20px; font-family: 'JetBrains Mono', monospace; color: var(--muted); text-decoration: line-through; text-decoration-color: var(--warn); text-decoration-thickness: 2px; }
+.now-price { font-size: 20px; font-family: 'JetBrains Mono', monospace; color: var(--sell); font-weight: 600; }
+.vs-arrow { color: var(--muted); font-size: 14px; }
+.savings-badge { margin-top: 10px; display: inline-flex; align-items: center; gap: 6px; background: var(--sell-bg); border: 1px solid rgba(34,197,94,0.15); border-radius: 6px; padding: 5px 10px; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--sell); }
+
+/* ── TIMELINE ────────────────────────────────────────────── */
+.timeline-wrap { animation: fadeUp 0.55s 0.16s ease both; }
+.timeline-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 24px; }
+.tl-header { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 18px; }
+.tl-title { font-size: 14px; font-weight: 600; }
+
+/* scale buttons */
+.scale-tabs { display: flex; gap: 4px; }
+.scale-btn {
+  padding: 4px 12px; border-radius: 6px; border: 1px solid var(--border2);
+  background: transparent; color: var(--muted);
+  font-size: 11px; font-family: 'JetBrains Mono', monospace;
+  cursor: pointer; transition: all 0.15s;
+}
+.scale-btn:hover { color: var(--text); background: var(--surface2); }
+.scale-btn.active { color: var(--text); background: var(--surface2); border-color: var(--border3); }
+
+.legend { display: flex; gap: 18px; flex-wrap: wrap; }
+.leg-item { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.leg-line { width: 22px; height: 2px; border-radius: 1px; }
+.leg-dot  { width: 9px; height: 9px; border-radius: 50%; }
+
+.chart-box { position: relative; height: 270px; }
+
+/* source attribution */
+.data-source {
+  margin-top: 10px;
+  font-size: 10px; color: var(--muted);
+  font-family: 'JetBrains Mono', monospace;
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.data-source a { color: var(--store); text-decoration: none; }
+.data-source a:hover { text-decoration: underline; }
+
+/* decision band */
+.band-wrap { margin-top: 10px; }
+.band-title { font-size: 9px; font-family: 'JetBrains Mono', monospace; color: var(--muted); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 5px; }
+.band { display: grid; grid-template-columns: repeat(24,1fr); gap: 2px; height: 18px; }
+.band-seg { border-radius: 3px; position: relative; }
+.band-seg.SELL  { background: var(--sell-bg);  border: 1px solid rgba(34,197,94,0.18); }
+.band-seg.STORE { background: var(--store-bg); border: 1px solid rgba(59,130,246,0.18); }
+.band-seg.USE   { background: var(--use-bg);   border: 1px solid rgba(249,115,22,0.18); }
+.band-seg:hover::after {
+  content: attr(data-tip);
+  position: absolute; bottom: 24px; left: 50%; transform: translateX(-50%);
+  background: var(--surface3); border: 1px solid var(--border2);
+  border-radius: 5px; padding: 4px 8px;
+  font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text);
+  white-space: nowrap; pointer-events: none; z-index: 10;
+}
+.band-hours { display: grid; grid-template-columns: repeat(24,1fr); gap: 2px; margin-top: 4px; }
+.band-h-lbl { font-size: 9px; font-family: 'JetBrains Mono', monospace; color: var(--muted); text-align: center; }
+
+/* ── MIDDLE GRID ─────────────────────────────────────────── */
+.mid-grid { display: grid; grid-template-columns: 1fr 370px; gap: 12px; animation: fadeUp 0.55s 0.24s ease both; }
+@media(max-width:1024px){ .mid-grid{ grid-template-columns:1fr; } }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+.card-title { font-size: 14px; font-weight: 600; margin-bottom: 4px; }
+.card-sub { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 16px; }
+
+.dec-list { display: flex; flex-direction: column; gap: 5px; max-height: 400px; overflow-y: auto; }
+.dec-list::-webkit-scrollbar { width: 3px; }
+.dec-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.dec-row { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 8px; transition: border-color 0.15s; }
+.dec-row:hover { border-color: var(--border3); }
+.dec-row.best { border-color: rgba(245,195,0,0.25); background: rgba(245,195,0,0.04); }
+.dec-time { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--muted); min-width: 40px; padding-top: 2px; flex-shrink: 0; }
+.dec-badge { font-size: 9px; font-weight: 600; font-family: 'JetBrains Mono', monospace; padding: 3px 7px; border-radius: 4px; letter-spacing: 0.05em; min-width: 44px; text-align: center; flex-shrink: 0; }
+.dec-badge.SELL  { background: var(--sell-bg);  color: var(--sell);  border: 1px solid rgba(34,197,94,0.2); }
+.dec-badge.STORE { background: var(--store-bg); color: var(--store); border: 1px solid rgba(59,130,246,0.2); }
+.dec-badge.USE   { background: var(--use-bg);   color: var(--use);   border: 1px solid rgba(249,115,22,0.2); }
+.dec-badge.MANUAL { background: var(--admin-bg); color: var(--admin); border: 1px solid rgba(167,139,250,0.2); }
+.dec-text { flex: 1; font-size: 12px; color: var(--text2); line-height: 1.4; }
+.dec-rev  { font-size: 12px; font-family: 'JetBrains Mono', monospace; color: var(--sell); font-weight: 600; white-space: nowrap; flex-shrink: 0; }
+.dec-conf { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--muted); white-space: nowrap; flex-shrink: 0; padding-top: 2px; }
+
+/* GAUGES */
+.gauge-col { display: flex; flex-direction: column; gap: 10px; }
+.gauge-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 20px; }
+.g-title { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.12em; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 16px; }
+.arc-wrap { display: flex; flex-direction: column; align-items: center; }
+.arc-wrap svg { overflow: visible; }
+.lin-group { display: flex; flex-direction: column; gap: 16px; }
+.lin-g { display: flex; flex-direction: column; gap: 7px; }
+.lin-top { display: flex; justify-content: space-between; align-items: baseline; }
+.lin-name { font-size: 12px; color: var(--text2); }
+.lin-val  { font-size: 14px; font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.lin-track { height: 5px; background: var(--surface3); border-radius: 3px; overflow: hidden; }
+.lin-fill  { height: 100%; border-radius: 3px; transition: width 1.2s cubic-bezier(0.4,0,0.2,1); }
+.co2-band { display: flex; justify-content: space-between; align-items: center; margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--border2); }
+.co2-lbl { font-size: 12px; color: var(--text2); }
+.co2-num { font-size: 20px; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--sell); }
+
+/* ── TOMORROW ────────────────────────────────────────────── */
+.tom-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 12px; animation: fadeUp 0.55s 0.32s ease both; }
+@media(max-width:900px){ .tom-grid{ grid-template-columns:1fr; } }
+.tom-card { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; display: flex; flex-direction: column; gap: 8px; transition: border-color 0.2s; }
+.tom-card:hover { border-color: var(--border2); }
+.tom-icon { font-size: 28px; }
+.tom-title { font-size: 14px; font-weight: 600; }
+.tom-body { font-size: 12px; color: var(--text2); line-height: 1.65; flex: 1; }
+.pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 7px; padding: 7px 12px; margin-top: 6px; font-size: 12px; font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+.pill.green { background: var(--sell-bg);  color: var(--sell);  border: 1px solid rgba(34,197,94,0.2); }
+.pill.blue  { background: var(--store-bg); color: var(--store); border: 1px solid rgba(59,130,246,0.2); }
+.pill.gold  { background: rgba(245,195,0,0.08); color: var(--solar); border: 1px solid rgba(245,195,0,0.2); }
+
+/* sparkline */
+.sparkline-wrap { display: flex; align-items: flex-end; gap: 3px; height: 40px; margin-top: 12px; }
+.spark-bar { flex: 1; border-radius: 3px 3px 0 0; background: var(--store-bg); border: 1px solid rgba(59,130,246,0.2); transition: background 0.2s; position: relative; cursor: default; }
+.spark-bar:hover { background: rgba(59,130,246,0.25); }
+.spark-bar::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: var(--surface3); border: 1px solid var(--border2); border-radius: 5px; padding: 4px 8px; font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--text); white-space: nowrap; opacity: 0; pointer-events: none; transition: opacity 0.15s; }
+.spark-bar:hover::after { opacity: 1; }
+
+/* ── ADMIN OVERRIDE MODAL ────────────────────────────────── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0; z-index: 500;
+  background: rgba(7,9,14,0.85); backdrop-filter: blur(8px);
+  align-items: center; justify-content: center;
+}
+.modal-overlay.open { display: flex; }
+
+.modal {
+  background: var(--surface);
+  border: 1px solid rgba(167,139,250,0.3);
+  border-radius: 18px; padding: 32px; width: 100%; max-width: 460px;
+  position: relative;
+  box-shadow: 0 0 60px rgba(167,139,250,0.12);
+  animation: modalIn 0.2s ease;
+}
+@keyframes modalIn { from { opacity:0; transform: scale(0.95) translateY(12px); } to { opacity:1; transform: scale(1) translateY(0); } }
+
+.modal-close { position: absolute; top: 18px; right: 18px; background: var(--surface2); border: 1px solid var(--border2); border-radius: 7px; padding: 4px 10px; color: var(--muted); font-size: 13px; cursor: pointer; }
+.modal-close:hover { color: var(--text); }
+
+.modal-title { font-size: 16px; font-weight: 700; color: var(--admin); margin-bottom: 4px; }
+.modal-sub { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 24px; }
+
+.modal-lock {
+  display: flex; gap: 10px; align-items: center; margin-bottom: 20px;
+}
+.modal-input {
+  flex: 1; background: var(--surface2); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 10px 14px;
+  color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 14px;
+  outline: none; transition: border-color 0.15s;
+}
+.modal-input:focus { border-color: rgba(167,139,250,0.5); }
+.modal-input::placeholder { color: var(--muted); }
+.modal-btn {
+  background: rgba(167,139,250,0.15); border: 1px solid rgba(167,139,250,0.3);
+  border-radius: 8px; padding: 10px 18px;
+  color: var(--admin); font-family: 'JetBrains Mono', monospace; font-size: 13px;
+  cursor: pointer; transition: background 0.15s;
+}
+.modal-btn:hover { background: rgba(167,139,250,0.25); }
+
+.modal-unlock-err { font-size: 11px; color: var(--warn); font-family: 'JetBrains Mono', monospace; margin-top: -14px; margin-bottom: 14px; display: none; }
+
+.override-panel { display: none; }
+.override-panel.visible { display: block; }
+
+.override-btns { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-bottom: 20px; }
+.ov-btn {
+  padding: 16px 8px; border-radius: 12px; border: 1px solid;
+  display: flex; flex-direction: column; align-items: center; gap: 7px;
+  cursor: pointer; transition: all 0.15s; font-family: 'Syne', sans-serif;
+}
+.ov-btn .ov-ico { font-size: 26px; }
+.ov-btn .ov-lbl { font-size: 12px; font-weight: 600; }
+.ov-btn .ov-desc { font-size: 10px; font-family: 'JetBrains Mono', monospace; color: var(--muted); text-align: center; line-height: 1.4; }
+
+.ov-btn.sell  { background: var(--sell-bg);  border-color: rgba(34,197,94,0.3);  color: var(--sell); }
+.ov-btn.store { background: var(--store-bg); border-color: rgba(59,130,246,0.3); color: var(--store); }
+.ov-btn.use   { background: var(--use-bg);   border-color: rgba(249,115,22,0.3); color: var(--use); }
+.ov-btn:hover { filter: brightness(1.2); transform: translateY(-2px); }
+.ov-btn.selected { filter: brightness(1.3); transform: translateY(-2px); box-shadow: 0 0 18px rgba(255,255,255,0.08); }
+
+.override-dur { margin-bottom: 20px; }
+.override-dur label { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; display: block; margin-bottom: 8px; }
+.dur-opts { display: flex; gap: 6px; flex-wrap: wrap; }
+.dur-btn {
+  padding: 5px 12px; border-radius: 6px; border: 1px solid var(--border2);
+  background: var(--surface2); color: var(--text2);
+  font-family: 'JetBrains Mono', monospace; font-size: 11px;
+  cursor: pointer; transition: all 0.15s;
+}
+.dur-btn:hover  { border-color: var(--border3); color: var(--text); }
+.dur-btn.active { background: rgba(167,139,250,0.15); border-color: rgba(167,139,250,0.4); color: var(--admin); }
+
+.modal-confirm {
+  width: 100%; padding: 12px; border-radius: 10px;
+  background: rgba(167,139,250,0.15); border: 1px solid rgba(167,139,250,0.3);
+  color: var(--admin); font-family: 'Syne', sans-serif; font-size: 14px; font-weight: 600;
+  cursor: pointer; transition: background 0.15s;
+}
+.modal-confirm:hover { background: rgba(167,139,250,0.25); }
+
+.override-status {
+  margin-top: 14px; padding: 10px 14px; border-radius: 8px;
+  background: rgba(167,139,250,0.08); border: 1px solid rgba(167,139,250,0.2);
+  font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--admin);
+  display: none; text-align: center;
+}
+
+/* ── WEATHER PAGE ────────────────────────────────────────── */
+.weather-hero {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px; padding: 28px;
+  margin-bottom: 12px;
+}
+.weather-today-row {
+  display: flex; align-items: center; gap: 24px; flex-wrap: wrap;
+}
+.w-icon-big { font-size: 72px; line-height: 1; }
+.w-today-info { flex: 1; }
+.w-today-temp { font-size: 64px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text); line-height: 1; }
+.w-today-desc { font-size: 18px; font-weight: 600; margin-top: 4px; color: var(--text2); }
+.w-today-loc  { font-size: 12px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+.w-today-meta { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 16px; }
+.w-meta-item  { display: flex; flex-direction: column; gap: 3px; }
+.w-meta-lbl   { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+.w-meta-val   { font-size: 15px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+
+.w-solar-impact {
+  margin-top: 20px; padding: 14px 18px;
+  background: rgba(245,195,0,0.06); border: 1px solid rgba(245,195,0,0.15);
+  border-radius: 10px;
+  font-size: 13px; color: var(--text2); line-height: 1.6;
+}
+
+/* 7-day forecast strip */
+.forecast-strip {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px;
+}
+@media(max-width:900px){ .forecast-strip{ grid-template-columns:repeat(4,1fr); } }
+@media(max-width:600px){ .forecast-strip{ grid-template-columns:repeat(2,1fr); } }
+
+.fc-day {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 13px; padding: 18px 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+  transition: border-color 0.2s, transform 0.2s;
+}
+.fc-day:hover { border-color: var(--border3); transform: translateY(-2px); }
+.fc-day.today { border-color: rgba(245,195,0,0.3); background: rgba(245,195,0,0.04); }
+
+.fc-day-name { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.fc-day-date { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.fc-icon { font-size: 32px; }
+.fc-temp-hi { font-size: 18px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--text); }
+.fc-temp-lo { font-size: 13px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.fc-solar-est { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--solar); }
+.fc-cloud { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+
+/* hourly weather bar */
+.hourly-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; }
+.hourly-scroll { display: flex; gap: 10px; overflow-x: auto; padding-bottom: 6px; }
+.hourly-scroll::-webkit-scrollbar { height: 3px; }
+.hourly-scroll::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.h-slot { display: flex; flex-direction: column; align-items: center; gap: 6px; flex-shrink: 0; width: 56px; }
+.h-time { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; }
+.h-icon { font-size: 20px; }
+.h-temp { font-size: 13px; font-weight: 600; font-family: 'JetBrains Mono', monospace; }
+.h-solar-bar { width: 32px; height: 40px; background: var(--surface2); border-radius: 4px 4px 0 0; position: relative; display: flex; align-items: flex-end; }
+.h-solar-fill { width: 100%; border-radius: 4px 4px 0 0; background: rgba(245,195,0,0.5); transition: height 0.5s ease; }
+.h-solar-val { font-size: 9px; color: var(--solar); font-family: 'JetBrains Mono', monospace; }
+
+/* weather source note */
+.weather-source { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 10px; padding: 8px 12px; background: var(--surface2); border-radius: 6px; border: 1px solid var(--border); }
+.weather-source a { color: var(--store); text-decoration: none; }
+.weather-source a:hover { text-decoration: underline; }
+
+/* ── THERMAL PAGE ────────────────────────────────────────── */
+.thermal-grid { display: grid; grid-template-columns: 1fr 340px; gap: 14px; }
+@media(max-width:960px){ .thermal-grid{ grid-template-columns:1fr; } }
+
+.tank-visual {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 28px;
+  display: flex; flex-direction: column; align-items: center;
+}
+
+.tank-wrap { position: relative; width: 160px; height: 300px; margin: 20px 0; }
+.tank-body {
+  position: absolute; inset: 0;
+  border: 2px solid rgba(255,255,255,0.12);
+  border-radius: 20px;
+  background: var(--surface2);
+  overflow: hidden;
+}
+.tank-fill {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  background: linear-gradient(0deg, rgba(249,115,22,0.6) 0%, rgba(251,191,36,0.4) 100%);
+  border-radius: 0 0 18px 18px;
+  transition: height 1s ease;
+}
+.tank-level-marks {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  justify-content: space-between; padding: 12px 0;
+}
+.tank-mark { width: 100%; display: flex; align-items: center; padding: 0 14px; gap: 8px; }
+.tank-mark-line { flex: 1; height: 1px; background: rgba(255,255,255,0.06); }
+.tank-mark-lbl { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; white-space: nowrap; }
+.tank-temp-badge {
+  position: absolute; right: -90px; top: 50%;
+  transform: translateY(-50%);
+  background: var(--surface3); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 8px 12px; text-align: center;
+}
+.tank-temp-num { font-size: 26px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--use); }
+.tank-temp-lbl { font-size: 9px; color: var(--muted); font-family: 'JetBrains Mono', monospace; text-transform: uppercase; letter-spacing: 0.08em; }
+.tank-days-est { font-size: 13px; color: var(--text2); margin-top: 10px; text-align: center; }
+.tank-days-num { font-size: 32px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: var(--sell); }
+
+.thermal-stats { display: flex; flex-direction: column; gap: 10px; }
+.therm-stat { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px 20px; }
+.therm-stat-lbl { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 6px; }
+.therm-stat-val { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+.therm-stat-sub { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 4px; }
+
+.thermal-chart-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 22px; margin-top: 14px; }
+.th-chart-box { position: relative; height: 200px; }
+
+/* ── SENSOR PAGE ─────────────────────────────────────────── */
+.sensor-grid-full { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+
+.sensor-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px; padding: 22px;
+  transition: border-color 0.2s;
+}
+.sensor-card:hover { border-color: var(--border3); }
+.sensor-card.active-card  { border-color: rgba(34,197,94,0.3); }
+.sensor-card.passive-card { border-color: rgba(59,130,246,0.2); }
+.sensor-card.warn-card    { border-color: rgba(239,68,68,0.3); }
+
+.sensor-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+.sensor-id { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; letter-spacing: 0.08em; margin-bottom: 4px; }
+.sensor-name-big { font-size: 15px; font-weight: 700; }
+.sensor-chip { font-size: 10px; padding: 3px 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; }
+.chip-active  { background: var(--sell-bg);  color: var(--sell);  border: 1px solid rgba(34,197,94,0.2); }
+.chip-passive { background: var(--store-bg); color: var(--store); border: 1px solid rgba(59,130,246,0.2); }
+.chip-warn    { background: rgba(239,68,68,0.1); color: var(--warn); border: 1px solid rgba(239,68,68,0.2); }
+
+.sensor-val-big { font-size: 36px; font-weight: 700; font-family: 'JetBrains Mono', monospace; margin: 6px 0; }
+.sensor-unit-lbl { font-size: 14px; color: var(--muted); margin-left: 4px; }
+
+.sensor-meta { display: flex; flex-direction: column; gap: 5px; margin-top: 10px; }
+.sensor-meta-row { display: flex; justify-content: space-between; font-size: 11px; font-family: 'JetBrains Mono', monospace; }
+.sensor-meta-key { color: var(--muted); }
+.sensor-meta-val { color: var(--text2); }
+
+.sensor-role-badge {
+  margin-top: 14px; padding: 8px 12px;
+  border-radius: 8px; font-size: 11px; font-family: 'JetBrains Mono', monospace;
+  border: 1px solid;
+}
+.role-storing  { background: rgba(59,130,246,0.08);  border-color: rgba(59,130,246,0.2); color: var(--store); }
+.role-reporting{ background: rgba(245,195,0,0.06);   border-color: rgba(245,195,0,0.15); color: var(--solar); }
+.role-control  { background: rgba(34,197,94,0.08);   border-color: rgba(34,197,94,0.2);  color: var(--sell); }
+.role-warn     { background: rgba(239,68,68,0.08);   border-color: rgba(239,68,68,0.2);  color: var(--warn); }
+
+.sensor-sparkline { display: flex; align-items: flex-end; gap: 2px; height: 28px; margin-top: 10px; }
+.s-bar { flex: 1; border-radius: 2px 2px 0 0; min-height: 2px; }
+
+/* ── MAINTENANCE PAGE ────────────────────────────────────── */
+.maint-stats { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 20px; }
+@media(max-width:900px){ .maint-stats{ grid-template-columns:repeat(2,1fr); } }
+
+.maint-kpi { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px 18px; }
+.maint-kpi-lbl { font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.1em; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-bottom: 8px; }
+.maint-kpi-val { font-size: 22px; font-weight: 700; font-family: 'JetBrains Mono', monospace; }
+
+.maint-log { display: flex; flex-direction: column; gap: 8px; }
+.maint-row {
+  display: flex; gap: 16px; align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px 20px;
+  transition: border-color 0.15s;
+}
+.maint-row:hover { border-color: var(--border3); }
+.maint-row.warn-row { border-left: 3px solid var(--warn); }
+.maint-row.ok-row   { border-left: 3px solid var(--sell); }
+.maint-row.info-row { border-left: 3px solid var(--store); }
+
+.maint-date { font-size: 11px; color: var(--muted); font-family: 'JetBrains Mono', monospace; min-width: 90px; padding-top: 2px; }
+.maint-icon { font-size: 20px; flex-shrink: 0; }
+.maint-body { flex: 1; }
+.maint-title-text { font-size: 13px; font-weight: 600; margin-bottom: 3px; }
+.maint-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+.maint-tech { font-size: 10px; color: var(--muted); font-family: 'JetBrains Mono', monospace; margin-top: 6px; }
+.maint-badge { font-size: 10px; padding: 3px 8px; border-radius: 4px; font-family: 'JetBrains Mono', monospace; white-space: nowrap; flex-shrink: 0; }
+.badge-done    { background: var(--sell-bg);  color: var(--sell);  border: 1px solid rgba(34,197,94,0.2); }
+.badge-warn    { background: rgba(239,68,68,0.1); color: var(--warn); border: 1px solid rgba(239,68,68,0.2); }
+.badge-info    { background: var(--store-bg); color: var(--store); border: 1px solid rgba(59,130,246,0.2); }
+.badge-planned { background: rgba(245,195,0,0.08); color: var(--solar); border: 1px solid rgba(245,195,0,0.2); }
+
+/* ── FOOTER ──────────────────────────────────────────────── */
+footer { text-align: center; padding: 28px 0; font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--muted); border-top: 1px solid var(--border); margin: 0 32px; line-height: 1.8; }
+
+/* ── ANIMATIONS ──────────────────────────────────────────── */
+@keyframes fadeUp { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<!-- ─── HEADER ──────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-mark">☀</div>
+    <div>
+      <div class="logo-name">SolarAI</div>
+      <div class="logo-sub">Energiemanagement · Süddeutschland</div>
+    </div>
+  </div>
+
+  <nav class="nav-tabs">
+    <div class="nav-tab active" onclick="showPage('home',this)">Übersicht</div>
+    <div class="nav-tab" onclick="showPage('weather',this)">Wetter</div>
+    <div class="nav-tab" onclick="showPage('thermal',this)">Thermospeicher</div>
+    <div class="nav-tab" onclick="showPage('sensors',this)">Sensoren</div>
+    <div class="nav-tab" onclick="showPage('maintenance',this)">Wartungslog</div>
+  </nav>
+
+  <div class="header-clock">
+    <div class="clock-date" id="live-date"></div>
+    <div class="clock-time" id="live-time">—</div>
+  </div>
+
+  <div class="header-right">
+    <div class="ai-badge" onclick="openAdminModal()" title="Admin-Override öffnen">
+      <div class="pulse sell" id="pulse-dot"></div>
+      <span id="ai-mode-label" style="color:var(--sell);">KI: SELL</span>
+      <span style="color:var(--muted);margin-left:4px;font-size:10px;">⚙ Override</span>
+    </div>
+    <div class="sys-status">System: <span style="color:var(--sell);margin-left:4px;">● Online</span></div>
+  </div>
+</header>
+
+<!-- ─── ADMIN OVERRIDE MODAL ────────────────────────────────── -->
+<div class="modal-overlay" id="admin-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeAdminModal()">✕ Schließen</button>
+    <div class="modal-title">⚙ Admin Override</div>
+    <div class="modal-sub">Master-Passwort erforderlich — manueller Eingriff ins KI-System</div>
+
+    <div id="lock-panel">
+      <div class="modal-lock">
+        <input class="modal-input" type="password" id="admin-pw" placeholder="Master-Passwort eingeben…" onkeydown="if(event.key==='Enter')tryUnlock()">
+        <button class="modal-btn" onclick="tryUnlock()">Entsperren</button>
+      </div>
+      <div class="modal-unlock-err" id="pw-err">⚠ Falsches Passwort — Zugriff verweigert</div>
+    </div>
+
+    <div class="override-panel" id="override-panel">
+      <p style="font-size:12px;color:var(--sell);font-family:'JetBrains Mono',monospace;margin-bottom:18px;">✓ Admin-Zugriff gewährt · Manuelle Steuerung aktiv</p>
+
+      <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-bottom:10px;">BETRIEBSMODUS WÄHLEN</div>
+      <div class="override-btns">
+        <div class="ov-btn sell" onclick="selectOverride('SELL',this)">
+          <span class="ov-ico">↗</span>
+          <span class="ov-lbl">VERKAUFEN</span>
+          <span class="ov-desc">Strom ins Netz einspeisen</span>
+        </div>
+        <div class="ov-btn store" onclick="selectOverride('STORE',this)">
+          <span class="ov-ico">⚡</span>
+          <span class="ov-lbl">SPEICHERN</span>
+          <span class="ov-desc">Batterie + Thermospeicher laden</span>
+        </div>
+        <div class="ov-btn use" onclick="selectOverride('USE',this)">
+          <span class="ov-ico">🏠</span>
+          <span class="ov-lbl">VERBRAUCHEN</span>
+          <span class="ov-desc">Aus Speicher versorgen</span>
+        </div>
+      </div>
+
+      <div class="override-dur">
+        <label>ÜBERSCHREIBUNGSDAUER</label>
+        <div class="dur-opts">
+          <div class="dur-btn active" onclick="selectDur('15min',this)">15 min</div>
+          <div class="dur-btn" onclick="selectDur('30min',this)">30 min</div>
+          <div class="dur-btn" onclick="selectDur('1h',this)">1 Stunde</div>
+          <div class="dur-btn" onclick="selectDur('2h',this)">2 Stunden</div>
+          <div class="dur-btn" onclick="selectDur('manual',this)">Manuell bis Abbruch</div>
+        </div>
+      </div>
+
+      <button class="modal-confirm" onclick="applyOverride()">Modus jetzt aktivieren →</button>
+      <div class="override-status" id="override-status"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- PAGE: HOME                                                   -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page active" id="page-home">
+<main>
+
+  <section class="hero" style="padding-top:4px;">
+    <p class="hero-narrative">
+      Heute produzierte dein System <span class="n-solar">42.3 kWh</span> Solarstrom.
+      Die KI traf <strong>96 Entscheidungen</strong> und verdiente deinen bisher
+      besten Tag: <span class="n-sell">+€ 30.60</span> Netto-Vorteil gegenüber dem Netz.
+      Bestes Fenster war um <span class="n-sell">18:00 Uhr</span> — Einspeisung zu <span class="n-sell">€ 0.35/kWh</span>.
+    </p>
+    <div class="stat-grid">
+      <div class="stat-card">
+        <span class="stat-lbl">☀ Produziert</span>
+        <div><span class="stat-val c-solar">42.3</span><span class="stat-unit">kWh</span></div>
+        <span class="stat-sub pos">↑ +8.4 % ggü. gestern</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-lbl">€ Einspeisung</span>
+        <div><span class="stat-val c-sell">19.40</span><span class="stat-unit">€</span></div>
+        <span class="stat-sub">Ø € 0.31/kWh erzielt</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-lbl">🔋 Netzbezug gespart</span>
+        <div><span class="stat-val c-store">11.20</span><span class="stat-unit">€</span></div>
+        <span class="stat-sub">35 kWh selbst verbraucht</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-lbl">⚡ KI-Entscheidungen</span>
+        <div><span class="stat-val c-text">96</span></div>
+        <span class="stat-sub">39× SELL · 40× STORE · 17× USE</span>
+      </div>
+      <div class="stat-card">
+        <span class="stat-lbl">🏠 Eigenversorgung</span>
+        <div><span class="stat-val c-sell">94</span><span class="stat-unit">%</span></div>
+        <span class="stat-sub pos">Netzunabhängig heute</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- FINANCIALS -->
+  <div class="sec-label" id="fin-month-label">Finanzübersicht — Dieser Monat (30 Tage)</div>
+  <div class="fin-grid">
+    <div class="fin-card earned">
+      <div class="fin-lbl">Verdient durch Einspeisung</div>
+      <div class="fin-big">€ 48.20</div>
+      <div class="fin-desc">Strom ins Netz verkauft, wenn die Spotpreise hoch waren. Durchschnittlich <em style="color:var(--sell)">€ 0.291/kWh</em> erzielt — <em style="color:var(--sell)">3.5× mehr</em> als die EEG-Einspeisevergütung von € 0.082.</div>
+      <div class="sparkline-wrap" id="weekly-revenue"></div>
+    </div>
+    <div class="fin-card saved">
+      <div class="fin-lbl">Gespart durch Eigenverbrauch</div>
+      <div class="fin-big">€ 124.80</div>
+      <div class="fin-desc">Strom selbst produziert und genutzt statt für <em style="color:var(--store)">€ 0.32/kWh</em> aus dem Netz zu beziehen. Entspricht <em style="color:var(--store)">390 kWh</em> Eigenverbrauch.</div>
+      <div class="sparkline-wrap" id="weekly-savings"></div>
+    </div>
+    <div class="fin-card counter">
+      <div class="fin-lbl">Was du ohne SolarAI bezahlt hättest</div>
+      <div class="fin-big">€ 183.60</div>
+      <div class="fin-desc">Dein vollständiger Strombedarf aus dem Netz wäre <em style="color:var(--solar)">€ 183.60</em> gekostet. Tatsächlicher Restbetrag diesen Monat:</div>
+      <div class="fin-vs">
+        <span class="was-price">€ 183.60</span>
+        <span class="vs-arrow">→</span>
+        <span class="now-price">€ 10.60</span>
+      </div>
+      <div class="savings-badge">✓ 94.2 % der Stromrechnung eingespart</div>
+    </div>
+  </div>
+
+  <!-- TIMELINE -->
+  <div class="sec-label" id="label-24h">24-Stunden-Verlauf</div>
+  <div class="timeline-wrap">
+    <div class="timeline-card">
+      <div class="tl-header">
+        <div>
+          <div class="tl-title">Solarproduktion &amp; Spotpreis — Skalierung wählen</div>
+        </div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:center;">
+          <div class="scale-tabs">
+            <button class="scale-btn active" onclick="switchScale('day',this)">Tag</button>
+            <button class="scale-btn" onclick="switchScale('month',this)">Monat</button>
+            <button class="scale-btn" onclick="switchScale('year',this)">Jahr</button>
+          </div>
+          <div class="legend">
+            <div class="leg-item"><div class="leg-line" style="background:var(--solar);"></div>Solar (kW/kWh)</div>
+            <div class="leg-item"><div class="leg-line" style="background:rgba(255,255,255,0.4);"></div>Spotpreis (€/kWh)</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--sell);"></div>SELL</div>
+            <div class="leg-item"><div class="leg-dot" style="background:var(--store);"></div>STORE</div>
+          </div>
+        </div>
+      </div>
+      <div class="chart-box"><canvas id="tlChart"></canvas></div>
+      <div class="band-wrap" id="band-section">
+        <div class="band-title">Dominante KI-Entscheidung je Stunde</div>
+        <div class="band" id="dec-band"></div>
+        <div class="band-hours" id="band-hrs"></div>
+      </div>
+      <!-- SOURCE ATTRIBUTION -->
+      <div class="data-source">
+        <span>📊 Spotpreisquelle:</span>
+        <strong style="color:var(--text2);">SMARD — Strommarktdaten</strong>
+        <a href="https://www.smard.de" target="_blank">smard.de</a>
+        <span>· Bundesnetzagentur · Day-Ahead-Auktion EPEX SPOT · 15-Minuten-Auflösung · Kostenlos &amp; offiziell</span>
+        <span style="margin-left:8px;">Wetterdaten: <a href="https://openweathermap.org" target="_blank">OpenWeatherMap API</a></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- MIDDLE -->
+  <div class="sec-label">KI-Entscheidungsprotokoll &amp; Systemstatus</div>
+  <div class="mid-grid">
+    <div class="card">
+      <div class="card-title">KI-Entscheidungsprotokoll</div>
+      <div class="card-sub">Heutige Entscheidungen, neueste zuerst — mit Klartextbegründung</div>
+      <div class="dec-list" id="dec-log"></div>
+    </div>
+    <div class="gauge-col">
+      <div class="gauge-card">
+        <div class="g-title">Netzunabhängigkeit — Heute</div>
+        <div class="arc-wrap">
+          <svg width="210" height="115" viewBox="0 0 210 115">
+            <defs><linearGradient id="arcGrad" x1="0%" y1="0%" x2="100%" y2="0%"><stop offset="0%" stop-color="#3b82f6"/><stop offset="100%" stop-color="#22c55e"/></linearGradient></defs>
+            <path d="M 25 105 A 80 80 0 0 1 185 105" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="12" stroke-linecap="round"/>
+            <path d="M 25 105 A 80 80 0 0 1 185 105" fill="none" stroke="url(#arcGrad)" stroke-width="12" stroke-linecap="round" stroke-dasharray="251.3" stroke-dashoffset="15.1" style="filter:drop-shadow(0 0 8px rgba(34,197,94,0.45))"/>
+            <text x="105" y="96" text-anchor="middle" font-family="JetBrains Mono" font-size="32" font-weight="700" fill="#22c55e">94%</text>
+            <text x="105" y="112" text-anchor="middle" font-family="Syne" font-size="9" fill="#52596b" letter-spacing="1">EIGENVERSORGUNG</text>
+            <text x="25" y="120" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#52596b">0%</text>
+            <text x="185" y="120" text-anchor="middle" font-family="JetBrains Mono" font-size="9" fill="#52596b">100%</text>
+          </svg>
+        </div>
+      </div>
+      <div class="gauge-card">
+        <div class="g-title">Systemstatus — 23:59 Uhr</div>
+        <div class="lin-group">
+          <div class="lin-g">
+            <div class="lin-top"><span class="lin-name">🔋 Batterie (Li-Ion)</span><span class="lin-val" style="color:var(--store);">63% <span style="font-size:11px;color:var(--muted);">/ 12.5 kWh</span></span></div>
+            <div class="lin-track"><div class="lin-fill" style="width:63%;background:var(--store);"></div></div>
+          </div>
+          <div class="lin-g">
+            <div class="lin-top"><span class="lin-name">🌡 Thermospeicher</span><span class="lin-val" style="color:var(--use);">64°C <span style="font-size:11px;color:var(--muted);">/ 95°C max</span></span></div>
+            <div class="lin-track"><div class="lin-fill" style="width:67%;background:linear-gradient(to right,var(--store),var(--use));"></div></div>
+          </div>
+          <div class="lin-g">
+            <div class="lin-top"><span class="lin-name">☀ Aktuelle Einstrahlung</span><span class="lin-val" style="color:var(--muted);">16 W/m² <span style="font-size:11px;color:var(--muted);">→ Nacht</span></span></div>
+            <div class="lin-track"><div class="lin-fill" style="width:2%;background:var(--solar);"></div></div>
+          </div>
+          <div class="lin-g">
+            <div class="lin-top"><span class="lin-name">⚡ Netzfrequenz</span><span class="lin-val" style="color:var(--sell);">50.008 <span style="font-size:11px;color:var(--muted);">Hz</span></span></div>
+            <div class="lin-track"><div class="lin-fill" style="width:88%;background:linear-gradient(to right,var(--store),var(--sell));"></div></div>
+          </div>
+          <div class="co2-band"><span class="co2-lbl">🌿 CO₂ vermieden heute</span><span class="co2-num">17.0 kg</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOMORROW -->
+  <div class="sec-label">Morgen — Prognose &amp; Handlungsempfehlungen</div>
+  <div class="tom-grid">
+    <div class="tom-card">
+      <div class="tom-icon">⛅</div>
+      <div class="tom-title">Wetterprognose</div>
+      <div class="tom-body">Morgen teilweise bewölkt mit Aufheiterungen am Nachmittag. Erwartete Solarproduktion: <strong style="color:var(--solar)">~22 kWh</strong> — rund 48% weniger als heute. Temperatur 18–24°C, Wind 3–6 m/s.<br><br>Der Thermospeicher hält mit seiner guten Dämmung (0.3°C/h Verlust) bis morgen Nachmittag problemlos die Zieltemperatur.</div>
+      <span class="pill gold">~22 kWh Prognose morgen</span>
+    </div>
+    <div class="tom-card">
+      <div class="tom-icon">🌙</div>
+      <div class="tom-title">Günstig laden — 01:00 bis 04:00 Uhr</div>
+      <div class="tom-body">In der Nacht fallen die Spotpreise auf etwa <strong style="color:var(--store)">€ 0.14–0.15/kWh</strong>. Da morgen weniger Sonne erwartet wird, empfiehlt die KI, die Batterie jetzt zu laden — bevor der Netzbezug tagsüber wieder teurer wird.<br><br>Prognostizierte Ersparnis gegenüber Tagsbezug: <strong style="color:var(--sell)">~ € 1.80</strong></div>
+      <span class="pill blue">→ 01:00–04:00 Uhr laden</span>
+    </div>
+    <div class="tom-card">
+      <div class="tom-icon">📈</div>
+      <div class="tom-title">Bestes Verkaufsfenster — 17:00 bis 19:00</div>
+      <div class="tom-body">Morgen Nachmittag steigen die Spotpreise voraussichtlich auf <strong style="color:var(--sell)">€ 0.33–0.38/kWh</strong>. Die KI plant, gespeicherte Energie dann ins Netz einzuspeisen. SOC-Ziel vor dem Fenster: mindestens 75%.<br><br>Prognostizierter Erlös: <strong style="color:var(--sell)">~ € 7.80</strong></div>
+      <span class="pill green">→ 17:00–19:00 Uhr verkaufen</span>
+    </div>
+  </div>
+
+</main>
+<footer>SolarAI Controller · 6.4 kWp · 12.5 kWh Batterie · 800L Thermospeicher · Süddeutschland<br><span style="color:var(--border3)">ESP32 → MQTT → InfluxDB → Python KI · 15-Minuten-Intervalle</span></footer>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- PAGE: WEATHER                                                -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-weather">
+<main>
+  <div class="sec-label" style="margin-top:8px;">Aktuelles Wetter &amp; 7-Tage-Prognose — Regensburg, Bayern</div>
+
+  <!-- TODAY HERO -->
+  <div class="weather-hero">
+    <div class="weather-today-row">
+      <div class="w-icon-big">⛅</div>
+      <div class="w-today-info">
+        <div class="w-today-temp">21°C</div>
+        <div class="w-today-desc">Teilweise bewölkt · Aufheiterungen am Nachmittag</div>
+        <div class="w-today-loc" id="weather-loc">Regensburg, Bayern · <span id="weather-date"></span></div>
+        <div class="w-today-meta">
+          <div class="w-meta-item"><div class="w-meta-lbl">Fühlt sich an wie</div><div class="w-meta-val" style="color:var(--text2);">19°C</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Luftfeuchtigkeit</div><div class="w-meta-val" style="color:var(--store);">58%</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Windgeschwindigkeit</div><div class="w-meta-val" style="color:var(--text2);">4.2 m/s SW</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">UV-Index</div><div class="w-meta-val" style="color:var(--solar);">6 (hoch)</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Bewölkung</div><div class="w-meta-val" style="color:var(--text2);">45%</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Sonnenaufgang</div><div class="w-meta-val" style="color:var(--solar);">05:12</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Sonnenuntergang</div><div class="w-meta-val" style="color:var(--use);">21:08</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="w-solar-impact">
+      ☀ <strong style="color:var(--solar);">KI-Solarprognose heute:</strong> 42.3 kWh produziert · Bewölkung von 45% reduzierte die theoretische Maximalproduktion (65.1 kWh) um <strong style="color:var(--warn);">35%</strong> · Thermospeicher profitierte von 8.2h direkter Einstrahlung · Morgen: 22 kWh erwartet (Bewölkung 68%).
+    </div>
+  </div>
+
+  <!-- HOURLY TODAY -->
+  <div class="sec-label">Stündliche Prognose — Heute</div>
+  <div class="hourly-wrap">
+    <div class="card-title" style="margin-bottom:16px;">Temperatur &amp; Solarproduktion je Stunde</div>
+    <div class="hourly-scroll" id="hourly-strip"></div>
+  </div>
+
+  <!-- 7-DAY FORECAST -->
+  <div class="sec-label">7-Tage-Übersicht</div>
+  <div class="forecast-strip" id="forecast-strip"></div>
+
+  <div class="weather-source">
+    📡 Datenquelle: <a href="https://open-meteo.com" target="_blank">Open-Meteo</a>
+    · Kein API-Key · Kein Proxy · Kein CORS-Problem · Direkte Browser-Anfrage
+    · Wettermodell: <strong style="color:var(--text2);">DWD ICON</strong> (Deutscher Wetterdienst) für Bayern
+    · Aktualisiert bei jedem Seitenaufruf · Koordinaten: Regensburg (49.01°N, 12.10°O)
+    · Solarschätzung basiert auf Sonnenscheindauer × 6.4 kWp × 82% Systemeffizienz
+  </div>
+</main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- PAGE: THERMAL STORAGE                                        -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-thermal">
+<main>
+  <div class="sec-label" style="margin-top:8px;">Thermospeicher — 800 Liter Pufferspeicher</div>
+
+  <div class="thermal-grid">
+    <!-- TANK VISUAL -->
+    <div class="tank-visual">
+      <div style="font-size:14px;font-weight:600;margin-bottom:6px;">Speicherstatus — Echtzeit</div>
+      <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">Letzter Messwert: 23:59 Uhr · Sensor: DS18B20</div>
+      <!--
+        Scale: 0°C (bottom) → 95°C (top) = 300px tank height
+        Fill height % = currentTemp / 95 * 100
+        64°C → 64/95 = 67.4%  ← fill stops here (below 75°C goal line)
+        Mark positions (top: from top of tank, so inverted):
+          95°C → top: 0%    (0px from top)
+          75°C → top: 21.1% (63px from top)
+          64°C → top: 32.6% (98px from top) ← current level
+          45°C → top: 52.6% (158px from top)
+          20°C → top: 78.9% (237px from top)
+      -->
+      <div class="tank-wrap">
+        <div class="tank-body">
+          <!-- Fill: 64/95 = 67.4% — correctly BELOW the 75°C goal mark -->
+          <div class="tank-fill" style="height:67.4%;"></div>
+          <!-- Marks: absolutely positioned, top = (1 - temp/95)*100% -->
+          <!-- 95°C max — top: 2% -->
+          <div style="position:absolute;top:2%;left:0;right:0;display:flex;align-items:center;padding:0 10px;gap:6px;">
+            <div style="flex:1;height:1px;background:rgba(239,68,68,0.4);"></div>
+            <span style="font-size:9px;color:#ef4444;font-family:'JetBrains Mono',monospace;white-space:nowrap;">95°C — Max (Sicherheitsventil)</span>
+          </div>
+          <!-- 75°C goal — top: 21.1% -->
+          <div style="position:absolute;top:21.1%;left:0;right:0;display:flex;align-items:center;padding:0 10px;gap:6px;">
+            <div style="flex:1;height:1px;background:rgba(34,197,94,0.5);"></div>
+            <span style="font-size:9px;color:#22c55e;font-family:'JetBrains Mono',monospace;white-space:nowrap;">75°C — Zieltemperatur</span>
+          </div>
+          <!-- 64°C current — top: 32.6% -->
+          <div style="position:absolute;top:32.6%;left:0;right:0;display:flex;align-items:center;padding:0 10px;gap:6px;">
+            <div style="flex:1;height:2px;background:rgba(251,146,60,0.8);"></div>
+            <span style="font-size:9px;color:#fb923c;font-weight:600;font-family:'JetBrains Mono',monospace;white-space:nowrap;">64°C — Aktuell ◀</span>
+          </div>
+          <!-- 45°C warning — top: 52.6% -->
+          <div style="position:absolute;top:52.6%;left:0;right:0;display:flex;align-items:center;padding:0 10px;gap:6px;">
+            <div style="flex:1;height:1px;background:rgba(250,210,50,0.4);"></div>
+            <span style="font-size:9px;color:#fad732;font-family:'JetBrains Mono',monospace;white-space:nowrap;">45°C — Minimum nutzbar</span>
+          </div>
+          <!-- 20°C cold — top: 78.9% -->
+          <div style="position:absolute;top:78.9%;left:0;right:0;display:flex;align-items:center;padding:0 10px;gap:6px;">
+            <div style="flex:1;height:1px;background:rgba(59,130,246,0.3);"></div>
+            <span style="font-size:9px;color:#60a5fa;font-family:'JetBrains Mono',monospace;white-space:nowrap;">20°C — Kalt / Leer</span>
+          </div>
+        </div>
+        <div class="tank-temp-badge">
+          <div class="tank-temp-num">64°C</div>
+          <div class="tank-temp-lbl">Aktuell</div>
+        </div>
+      </div>
+      <!-- Legend below tank -->
+      <div style="display:flex;flex-direction:column;gap:4px;margin-top:10px;font-family:'JetBrains Mono',monospace;font-size:10px;width:100%;max-width:260px;">
+        <div style="display:flex;justify-content:space-between;"><span style="color:#ef4444;">■ 95°C</span><span style="color:var(--muted);">Sicherheitsabschaltung</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#22c55e;">■ 75°C</span><span style="color:var(--muted);">KI-Zieltemperatur</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#fb923c;">■ 64°C</span><span style="color:var(--muted);">Aktuell (11°C unter Ziel)</span></div>
+        <div style="display:flex;justify-content:space-between;"><span style="color:#fad732;">■ 45°C</span><span style="color:var(--muted);">Minimum für Heizung</span></div>
+      </div>
+      <div class="tank-days-est" style="margin-top:14px;">
+        Geschätzte Haltezeit:<br>
+        <span class="tank-days-num">3.8</span>
+        <span style="font-size:14px;color:var(--muted);"> Tage</span>
+      </div>
+      <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;margin-top:8px;text-align:center;">bei 0.3°C/h Verlust · 800L · Wärmemenge: 32.8 kWh</div>
+    </div>
+
+    <!-- THERMAL STATS -->
+    <div class="thermal-stats">
+      <div class="therm-stat">
+        <div class="therm-stat-lbl">Aktuelle Temperatur</div>
+        <div class="therm-stat-val" style="color:var(--use);">64.0°C</div>
+        <div class="therm-stat-sub">Sensor DS18B20 · GPIO 4</div>
+      </div>
+      <div class="therm-stat">
+        <div class="therm-stat-lbl">Gespeicherte Wärmeenergie</div>
+        <div class="therm-stat-val" style="color:var(--solar);">32.8 kWh</div>
+        <div class="therm-stat-sub">bei 64°C vs. 20°C Umgebung · (4186 J/kg·K × 800L × 44K) / 3.6M</div>
+      </div>
+      <div class="therm-stat">
+        <div class="therm-stat-lbl">Verlustrate</div>
+        <div class="therm-stat-val" style="color:var(--text2);">0.3°C/h</div>
+        <div class="therm-stat-sub">Gut isolierter Tank · entspricht ~0.28 kWh/h Verlust</div>
+      </div>
+      <div class="therm-stat">
+        <div class="therm-stat-lbl">Geschätzte Haltezeit</div>
+        <div class="therm-stat-val" style="color:var(--sell);">3.8 Tage</div>
+        <div class="therm-stat-sub">bis 45°C Minimum · Ziel 75°C · Max 95°C (Sicherheitsventil)</div>
+      </div>
+      <div class="therm-stat">
+        <div class="therm-stat-lbl">Heutiger Solarertrag → Wärme</div>
+        <div class="therm-stat-val" style="color:var(--solar);">18.4 kWh</div>
+        <div class="therm-stat-sub">8:00–14:00 Uhr · Solar→Heizung aktiv</div>
+      </div>
+      <div class="therm-stat">
+        <div class="therm-stat-lbl">Heizstufe (aktuell)</div>
+        <div class="therm-stat-val" style="color:var(--muted);">Standby</div>
+        <div class="therm-stat-sub">Nacht · Solar nicht verfügbar · Wärmeschutz aktiv</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- THERMAL TEMP CHART -->
+  <div class="thermal-chart-wrap">
+    <div class="card-title" style="margin-bottom:16px;">Temperaturverlauf — Heute (24h)</div>
+    <div class="th-chart-box"><canvas id="thermalChart"></canvas></div>
+  </div>
+
+  <!-- THERMAL ANALYSIS -->
+  <div class="sec-label">Systemanalyse</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+    <div class="card">
+      <div class="card-title">Projekt-Alleinstellungsmerkmal</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.7;margin-top:8px;">
+        Der integrierte <strong style="color:var(--solar);">800L Pufferspeicher</strong> hält thermische Energie für <strong style="color:var(--sell);">3+ Tage</strong> — eine Kombination mit KI-gesteuertem Energiemanagement, die in Deutschland noch nicht als kommerzielles Produkt erhältlich ist. Die KI entscheidet, wann Solarstrom günstiger als Wärme gespeichert wird, und wann Verkauf ins Netz sinnvoller ist.
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Physikalische Grundlage</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.7;margin-top:8px;">
+        <strong style="color:var(--store);">Wärmekapazität:</strong> Q = m × c × ΔT<br>
+        = 800 kg × 4186 J/kg·K × (64°C − 20°C)<br>
+        = 147.5 MJ = <strong style="color:var(--solar);">40.97 kWh</strong><br><br>
+        <strong style="color:var(--use);">Verlustrate:</strong> 0.3°C/h × 800kg × 4186 J/kg·K<br>
+        = 1005 kJ/h = <strong style="color:var(--warn);">0.279 kWh/h</strong>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- PAGE: SENSORS                                                -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-sensors">
+<main>
+  <div class="sec-label" style="margin-top:8px;">Sensor-Dashboard — 6 aktive Sensoren · ESP32 DevKit v1</div>
+  <div style="font-size:12px;color:var(--text2);margin-bottom:20px;">Jeder Sensor zeigt: aktueller Messwert · Protokoll · Datenfluss · ob Sensor aktiv speichert oder nur meldet</div>
+  <div class="sensor-grid-full" id="sensor-grid-full"></div>
+  <div class="sec-label">Datenfluss-Übersicht</div>
+  <div class="card">
+    <div class="card-title" style="margin-bottom:12px;">Wo kommen die Daten hin?</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:12px;line-height:2.2;color:var(--text2);">
+      <div>ESP32 (6 Sensoren) <span style="color:var(--muted);"> ──→ </span> <span style="color:var(--solar);">MQTT Broker</span> (Mosquitto · Port 1883) <span style="color:var(--muted);"> ──→ </span> <span style="color:var(--store);">Node-RED</span> (Flow-Prozessor)</div>
+      <div style="padding-left:32px;"><span style="color:var(--muted);">└──→ </span><span style="color:var(--sell);">InfluxDB</span> (Zeitreihendatenbank · measurement: <code style="color:var(--solar);background:rgba(245,195,0,0.08);padding:1px 5px;border-radius:3px;">sensor_readings</code>)</div>
+      <div style="padding-left:32px;"><span style="color:var(--muted);">└──→ </span><span style="color:var(--admin);">Python KI-Controller</span> (liest alle 15 min · schreibt Entscheidung zurück zu MQTT)</div>
+      <div style="padding-left:32px;"><span style="color:var(--muted);">└──→ </span><span style="color:var(--text);">Dieses Dashboard</span> (liest aus InfluxDB REST API)</div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- PAGE: MAINTENANCE                                            -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="page" id="page-maintenance">
+<main>
+  <div class="sec-label" style="margin-top:8px;">Wartungsprotokoll — Systemereignisse &amp; geplante Maßnahmen</div>
+
+  <div class="maint-stats">
+    <div class="maint-kpi"><div class="maint-kpi-lbl">Letzter Service</div><div class="maint-kpi-val" style="color:var(--sell);">vor 12 Tagen</div></div>
+    <div class="maint-kpi"><div class="maint-kpi-lbl">Offene Warnungen</div><div class="maint-kpi-val" style="color:var(--warn);">1</div></div>
+    <div class="maint-kpi"><div class="maint-kpi-lbl">Nächster Service</div><div class="maint-kpi-val" style="color:var(--solar);">in 18 Tagen</div></div>
+    <div class="maint-kpi"><div class="maint-kpi-lbl">Systemlaufzeit</div><div class="maint-kpi-val" style="color:var(--store);">99.7%</div></div>
+  </div>
+
+  <div class="maint-log" id="maint-log"></div>
+</main>
+</div>
+
+<script>
+// ── PAGE NAVIGATION ───────────────────────────────────────────
+function showPage(id, tab) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-' + id).classList.add('active');
+  if (tab) tab.classList.add('active');
+  if (id === 'thermal' && !window._thermalBuilt) { buildThermalChart(); window._thermalBuilt = true; }
+}
+
+// ── CLOCK ─────────────────────────────────────────────────────
+function tick() {
+  const n = new Date();
+  const timeStr = n.toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  const dateShort = n.toLocaleDateString('de-DE', {day:'numeric', month:'long', year:'numeric'});
+  const dateLong  = n.toLocaleDateString('de-DE', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+  // Clock
+  const liveTime = document.getElementById('live-time');
+  if (liveTime) liveTime.textContent = timeStr;
+
+  // Header date
+  const liveDate = document.getElementById('live-date');
+  if (liveDate) liveDate.textContent = dateShort;
+
+  // Weather page date
+  const weatherDate = document.getElementById('weather-date');
+  if (weatherDate) weatherDate.textContent = `${dateShort} · ${timeStr} Uhr`;
+
+  // 24h section label — updates to today's date
+  const label24h = document.getElementById('label-24h');
+  if (label24h) label24h.textContent = `24-Stunden-Verlauf — ${dateLong}`;
+
+  // Hero narrative date references
+  const heroDate = document.getElementById('hero-today-date');
+  if (heroDate) heroDate.textContent = dateShort;
+
+  // Finanzübersicht month label
+  const finMonth = document.getElementById('fin-month-label');
+  if (finMonth) {
+    const monthName = n.toLocaleDateString('de-DE', {month:'long', year:'numeric'});
+    finMonth.textContent = `Finanzübersicht — ${monthName}`;
+  }
+}
+
+// ── ADMIN MODAL ───────────────────────────────────────────────
+const ADMIN_PW = 'admin';
+let selectedOverride = null;
+let selectedDur = '15min';
+
+function openAdminModal() {
+  document.getElementById('admin-modal').classList.add('open');
+  document.getElementById('admin-pw').value = '';
+  document.getElementById('pw-err').style.display = 'none';
+  document.getElementById('lock-panel').style.display = 'block';
+  document.getElementById('override-panel').classList.remove('visible');
+  document.getElementById('override-status').style.display = 'none';
+  selectedOverride = null;
+  document.querySelectorAll('.ov-btn').forEach(b => b.classList.remove('selected'));
+  document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector('.dur-btn').classList.add('active');
+}
+function closeAdminModal() { document.getElementById('admin-modal').classList.remove('open'); }
+
+function tryUnlock() {
+  const pw = document.getElementById('admin-pw').value;
+  if (pw === ADMIN_PW) {
+    document.getElementById('lock-panel').style.display = 'none';
+    document.getElementById('override-panel').classList.add('visible');
+  } else {
+    document.getElementById('pw-err').style.display = 'block';
+    document.getElementById('admin-pw').value = '';
+  }
+}
+
+function selectOverride(mode, btn) {
+  selectedOverride = mode;
+  document.querySelectorAll('.ov-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+}
+function selectDur(dur, btn) {
+  selectedDur = dur;
+  document.querySelectorAll('.dur-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+let overrideTimer = null;
+let overrideActive = false;
+
+function applyOverride() {
+  if (!selectedOverride) { alert('Bitte zuerst einen Modus wählen.'); return; }
+  const modeColors = { SELL: 'var(--sell)', STORE: 'var(--store)', USE: 'var(--use)' };
+  const modeLabels = { SELL: 'VERKAUFEN', STORE: 'SPEICHERN', USE: 'VERBRAUCHEN' };
+  const durLabels  = { '15min':'15 Minuten', '30min':'30 Minuten', '1h':'1 Stunde', '2h':'2 Stunden', 'manual':'Manuell bis Abbruch' };
+  const durMs      = { '15min':900000, '30min':1800000, '1h':3600000, '2h':7200000, 'manual':null };
+
+  overrideActive = true;
+  if (overrideTimer) clearTimeout(overrideTimer);
+
+  document.getElementById('ai-mode-label').textContent = `MANUELL: ${modeLabels[selectedOverride]}`;
+  document.getElementById('ai-mode-label').style.color = modeColors[selectedOverride];
+  document.getElementById('pulse-dot').className = 'pulse admin';
+
+  // Show persistent override banner under header
+  let banner = document.getElementById('override-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'override-banner';
+    banner.style.cssText = `position:sticky;top:64px;z-index:190;background:rgba(167,139,250,0.12);border-bottom:1px solid rgba(167,139,250,0.3);padding:8px 32px;display:flex;align-items:center;justify-content:space-between;gap:12px;font-family:'JetBrains Mono',monospace;font-size:12px;flex-wrap:wrap;`;
+    document.body.insertBefore(banner, document.body.children[1]);
+  }
+  banner.innerHTML = `<span style="color:var(--admin);">⚙ OVERRIDE AKTIV — ${modeLabels[selectedOverride]} · ${durLabels[selectedDur]} · seit ${new Date().toLocaleTimeString('de-DE')}</span><button onclick="returnToAI()" style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.35);border-radius:7px;padding:5px 14px;color:var(--sell);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;">↩ Zurück zur KI-Steuerung</button>`;
+  banner.style.display = 'flex';
+
+  const st = document.getElementById('override-status');
+  st.style.display = 'block';
+  st.innerHTML = `✓ Override aktiv: ${modeLabels[selectedOverride]} · ${durLabels[selectedDur]}<br><button onclick="returnToAI();closeAdminModal();" style="margin-top:8px;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);border-radius:7px;padding:6px 16px;color:var(--sell);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;width:100%;">↩ Jetzt zurück zur KI-Steuerung</button>`;
+
+  // Log it
+  const list = document.getElementById('dec-log');
+  if (list) {
+    const row = document.createElement('div');
+    row.className = 'dec-row best';
+    const now = new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+    row.innerHTML = `<span class="dec-time">${now}</span><span class="dec-badge MANUAL">MANUAL</span><span class="dec-text">⚙ Admin Override: ${modeLabels[selectedOverride]} für ${durLabels[selectedDur]} aktiviert</span><span class="dec-conf">100%</span>`;
+    list.prepend(row);
+  }
+
+  // Auto-revert after timed duration
+  const ms = durMs[selectedDur];
+  if (ms) {
+    overrideTimer = setTimeout(() => returnToAI(), ms);
+  }
+
+  setTimeout(closeAdminModal, 900);
+}
+
+function returnToAI() {
+  overrideActive = false;
+  if (overrideTimer) { clearTimeout(overrideTimer); overrideTimer = null; }
+
+  document.getElementById('ai-mode-label').textContent = 'KI: SELL';
+  document.getElementById('ai-mode-label').style.color = 'var(--sell)';
+  document.getElementById('pulse-dot').className = 'pulse sell';
+
+  const banner = document.getElementById('override-banner');
+  if (banner) banner.style.display = 'none';
+
+  // Log return
+  const list = document.getElementById('dec-log');
+  if (list) {
+    const row = document.createElement('div');
+    row.className = 'dec-row';
+    const now = new Date().toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'});
+    row.innerHTML = `<span class="dec-time">${now}</span><span class="dec-badge SELL">SELL</span><span class="dec-text">↩ KI-Steuerung wiederhergestellt — automatischer Betrieb aktiv</span><span class="dec-conf">auto</span>`;
+    list.prepend(row);
+  }
+}
+
+// ── CHART DATA ────────────────────────────────────────────────
+const hours = Array.from({length:24},(_,i)=>`${String(i).padStart(2,'0')}:00`);
+const solarKw = [0.025,0.058,0.043,0.060,0.000,0.065,0.333,1.098,2.470,3.865,5.068,5.903,6.498,6.075,5.650,4.680,3.300,1.803,0.728,0.080,0.015,0.060,0.050,0.025];
+const spotEur = [0.181,0.168,0.159,0.150,0.151,0.161,0.198,0.229,0.265,0.285,0.291,0.273,0.248,0.241,0.249,0.271,0.300,0.320,0.341,0.311,0.283,0.250,0.221,0.199];
+const hourDec = ['SELL','SELL','STORE','SELL','STORE','SELL','SELL','SELL','STORE','SELL','STORE','SELL','SELL','SELL','STORE','SELL','STORE','SELL','SELL','SELL','STORE','SELL','STORE','SELL'];
+
+// Monthly data — last 30 days from today
+const monthDays = Array.from({length:30}, (_,i) => {
+  const d = new Date(); d.setDate(d.getDate() - 29 + i);
+  return `${d.getDate()}.${d.getMonth()+1}`;
+});
+const monthSolar = [22,18,31,28,26,33,28,24,29,35,32,19,28,30,27,34,31,22,25,38,36,29,27,33,40,38,35,42,39,42];
+const monthPrice = Array.from({length:30},(_,i)=>+(0.22+Math.sin(i*0.4)*0.06+Math.random()*0.02).toFixed(3));
+
+// Yearly data
+const monthNames = ['Jan','Feb','Mär','Apr','Mai','Jun','Jul','Aug','Sep','Okt','Nov','Dez'];
+const yearSolar  = [8,12,22,32,40,42,44,41,30,20,10,7];
+const yearPrice  = [0.28,0.26,0.24,0.22,0.23,0.25,0.24,0.23,0.25,0.27,0.29,0.30];
+
+let mainChartInstance = null;
+
+function buildChart(scale) {
+  if (mainChartInstance) { mainChartInstance.destroy(); mainChartInstance = null; }
+  const ctx = document.getElementById('tlChart');
+  if (!ctx) return;
+  const c = ctx.getContext('2d');
+
+  let labels, dataS, dataP, chartType, yMax, yLabel;
+  const bandSection = document.getElementById('band-section');
+
+  if (scale === 'day') {
+    labels = hours; dataS = solarKw; dataP = spotEur;
+    chartType = 'line'; yMax = 8; yLabel = 'kW';
+    if (bandSection) bandSection.style.display = 'block';
+  } else if (scale === 'month') {
+    labels = monthDays; dataS = monthSolar; dataP = monthPrice;
+    chartType = 'bar'; yMax = 50; yLabel = 'kWh';
+    if (bandSection) bandSection.style.display = 'none';
+  } else {
+    labels = monthNames; dataS = yearSolar; dataP = yearPrice;
+    chartType = 'bar'; yMax = 55; yLabel = 'kWh Ø/Tag';
+    if (bandSection) bandSection.style.display = 'none';
+  }
+
+  const solarGrad = c.createLinearGradient(0,0,0,270);
+  solarGrad.addColorStop(0,'rgba(245,195,0,0.38)');
+  solarGrad.addColorStop(0.7,'rgba(245,195,0,0.08)');
+  solarGrad.addColorStop(1,'rgba(245,195,0,0.00)');
+
+  mainChartInstance = new Chart(ctx, {
+    type: chartType,
+    data: {
+      labels,
+      datasets: [
+        { label: `Solar (${yLabel})`, data: dataS, yAxisID:'yS', borderColor:'#f5c300', backgroundColor: chartType==='line'?solarGrad:'rgba(245,195,0,0.5)', borderWidth:2.5, fill:chartType==='line', tension:0.42, pointRadius:0, borderRadius: chartType==='bar'?4:0 },
+        { label: 'Spotpreis (€/kWh)', data: dataP, yAxisID:'yP', borderColor:'rgba(255,255,255,0.38)', backgroundColor:'transparent', borderWidth:1.5, fill:false, tension:0.42, pointRadius:0, type:'line' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      interaction: { mode:'index', intersect:false },
+      plugins: { legend:{ display:false }, tooltip:{ backgroundColor:'#1a1f2c', borderColor:'rgba(255,255,255,0.10)', borderWidth:1, titleColor:'#52596b', bodyColor:'#dde1eb', padding:14, cornerRadius:8, titleFont:{family:'JetBrains Mono',size:11}, bodyFont:{family:'JetBrains Mono',size:12}, callbacks:{ title:ctx=>`${ctx[0].label}`, label:ctx=>{ if(ctx.datasetIndex===0) return `  ☀  Solar: ${ctx.parsed.y.toFixed(2)} ${yLabel}`; return `  €  Preis: €${ctx.parsed.y.toFixed(3)}/kWh`; } } } },
+      scales: {
+        x:  { grid:{color:'rgba(255,255,255,0.035)',drawTicks:false}, ticks:{color:'#52596b',font:{family:'JetBrains Mono',size:10},maxTicksLimit:scale==='day'?13:16,maxRotation:scale==='month'?45:0}, border:{display:false} },
+        yS: { type:'linear',position:'left',min:0,max:yMax,grid:{color:'rgba(255,255,255,0.035)'}, ticks:{color:'#f5c300',font:{family:'JetBrains Mono',size:10},callback:v=>`${v} ${yLabel}`}, border:{display:false} },
+        yP: { type:'linear',position:'right',min:0.08,max:0.44,grid:{display:false}, ticks:{color:'rgba(255,255,255,0.32)',font:{family:'JetBrains Mono',size:10},callback:v=>`€${v.toFixed(2)}`}, border:{display:false} }
+      }
+    }
+  });
+}
+
+function switchScale(scale, btn) {
+  document.querySelectorAll('.scale-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  buildChart(scale);
+}
+
+// ── DECISION BAND ─────────────────────────────────────────────
+function buildBand() {
+  const band = document.getElementById('dec-band');
+  const hrs  = document.getElementById('band-hrs');
+  if (!band) return;
+  const tips = { SELL:'SELL — Einspeisung', STORE:'STORE — Laden', USE:'USE — Eigenverbrauch' };
+  hourDec.forEach((d,i) => {
+    const s = document.createElement('div');
+    s.className = `band-seg ${d}`;
+    s.setAttribute('data-tip',`${String(i).padStart(2,'0')}:00 · ${tips[d]}`);
+    band.appendChild(s);
+    const lbl = document.createElement('div');
+    lbl.className = 'band-h-lbl';
+    lbl.textContent = i % 3 === 0 ? `${i}h` : '';
+    hrs.appendChild(lbl);
+  });
+}
+
+// ── DECISION LOG ──────────────────────────────────────────────
+const decLog = [
+  {t:'23:45',d:'STORE',txt:'Nächste Stunden günstig — Batterie für morgen aufladen',rev:null,c:92},
+  {t:'23:30',d:'STORE',txt:'Thermospeicher hält Temperatur — kein Handlungsbedarf',rev:null,c:77},
+  {t:'23:15',d:'SELL', txt:'Kleiner Restsolar-Überschuss ins Netz eingespeist',rev:0.20,c:82},
+  {t:'23:00',d:'SELL', txt:'Abendliche Netznachfrage erkannt — Einspeisung lohnt',rev:0.32,c:87},
+  {t:'22:45',d:'USE',  txt:'Nachtbedarf aus gespeicherter Energie gedeckt — kein Netzbezug',rev:null,c:77},
+  {t:'22:15',d:'SELL', txt:'Preisanstieg erkannt — kleiner Entladeimpuls ins Netz',rev:0.17,c:93},
+  {t:'21:30',d:'SELL', txt:'Preis über Schwelle — Batterie hatte genug Puffer zum Verkaufen',rev:0.54,c:82},
+  {t:'21:15',d:'SELL', txt:'Preisanstieg auf € 0.258 erkannt — optimales Einspeisefenster',rev:0.63,c:82},
+  {t:'19:45',d:'SELL', txt:'Hohe Netznachfrage, SOC bei 79% — sicher einspeisen',rev:0.25,c:93},
+  {t:'19:30',d:'SELL', txt:'Abendpreispeak bestätigt — Entladen mit Gewinn',rev:0.66,c:78},
+  {t:'18:00',d:'SELL', txt:'🏆 BESTES FENSTER HEUTE: € 0.35/kWh · SOC bei 80% · Perfektes Timing',rev:1.22,c:94,best:true},
+  {t:'17:15',d:'SELL', txt:'Preis auf € 0.313 gestiegen — Batterie ans Netz abgegeben',rev:0.33,c:96},
+  {t:'13:30',d:'SELL', txt:'Mittagsspitze: SOC 82%, Preis über € 0.245 — optimaler Zeitpunkt',rev:0.83,c:99},
+  {t:'12:00',d:'SELL', txt:'Solar bei 6.3 kW, Preis über Schwelle — Überschuss verkauft',rev:0.47,c:95},
+  {t:'10:15',d:'SELL', txt:'Starke Mittagsproduktion — Solarüberschuss gewinnbringend eingespeist',rev:0.76,c:78},
+  {t:'08:45',d:'SELL', txt:'Hohe Netznachfrage am Morgen — Solar + Batterie kombiniert eingespeist',rev:0.60,c:97},
+  {t:'08:00',d:'STORE',txt:'Thermospeicher unter Ziel — Solarenergie zum Aufheizen verwendet',rev:null,c:96},
+  {t:'09:00',d:'STORE',txt:'Solarüberschuss und SOC unter 80% — Batterie laden',rev:null,c:99},
+];
+
+function buildDecLog() {
+  const list = document.getElementById('dec-log');
+  if (!list) return;
+  const todayStr = new Date().toLocaleDateString('de-DE', {day:'2-digit', month:'2-digit', year:'numeric'});
+  decLog.forEach(d => {
+    const row = document.createElement('div');
+    row.className = 'dec-row' + (d.best?' best':'');
+    row.innerHTML = `<span class="dec-time">${d.t}</span><span class="dec-badge ${d.d}">${d.d}</span><span class="dec-text">${d.txt}</span>${d.rev?`<span class="dec-rev">+€${d.rev.toFixed(2)}</span>`:''}<span class="dec-conf">${d.c}%</span>`;
+    list.appendChild(row);
+  });
+  // Update decision log card subtitle to today's date
+  const sub = document.querySelector('#dec-log')?.previousElementSibling;
+  if (sub && sub.classList.contains('card-sub')) {
+    sub.textContent = `Heutige Entscheidungen (${todayStr}), neueste zuerst`;
+  }
+}
+
+// ── SPARKLINES ────────────────────────────────────────────────
+function buildSparkline(id,data,color,prefix) {
+  const w = document.getElementById(id); if (!w) return;
+  const mx = Math.max(...data);
+  data.forEach((v,i) => {
+    const b = document.createElement('div');
+    b.className = 'spark-bar';
+    b.style.height = `${(v/mx)*100}%`;
+    b.style.background = color;
+    b.style.border = `1px solid ${color}40`;
+    b.setAttribute('data-tip',`W${i+1}: ${prefix}${v.toFixed(2)}`);
+    w.appendChild(b);
+  });
+}
+
+// ── WEATHER — OPEN-METEO (no API key, no proxy, CORS-native) ──
+// open-meteo.com · Free · No registration · DWD ICON model for Germany
+// Direct browser fetch works perfectly — no CORS issues
+
+const LAT = 49.0134;
+const LON = 12.1016;
+
+// WMO weather code → { label, emoji }
+function wmoInfo(code, isDay) {
+  const d = isDay !== false;
+  const map = {
+    0:  { l:'Klarer Himmel',          e: d?'☀️':'🌙' },
+    1:  { l:'Überwiegend klar',        e: d?'🌤️':'🌤️' },
+    2:  { l:'Teilweise bewölkt',       e:'⛅' },
+    3:  { l:'Bedeckt',                 e:'☁️' },
+    45: { l:'Neblig',                  e:'🌫️' },
+    48: { l:'Gefrierender Nebel',      e:'🌫️' },
+    51: { l:'Leichter Nieselregen',    e:'🌦️' },
+    53: { l:'Nieselregen',             e:'🌦️' },
+    55: { l:'Starker Nieselregen',     e:'🌧️' },
+    61: { l:'Leichter Regen',          e:'🌧️' },
+    63: { l:'Regen',                   e:'🌧️' },
+    65: { l:'Starker Regen',           e:'🌧️' },
+    71: { l:'Leichter Schneefall',     e:'❄️' },
+    73: { l:'Schneefall',              e:'❄️' },
+    75: { l:'Starker Schneefall',      e:'❄️' },
+    80: { l:'Leichte Schauer',         e:'🌦️' },
+    81: { l:'Schauer',                 e:'🌧️' },
+    82: { l:'Starke Schauer',          e:'⛈️' },
+    95: { l:'Gewitter',                e:'⛈️' },
+    96: { l:'Gewitter mit Hagel',      e:'⛈️' },
+    99: { l:'Starkes Gewitter',        e:'⛈️' },
+  };
+  return map[code] || { l:'Unbekannt', e:'🌡️' };
+}
+
+function windDir(deg) {
+  const dirs = ['N','NO','O','SO','S','SW','W','NW'];
+  return dirs[Math.round(deg / 45) % 8];
+}
+
+function solarEstFromCloud(cloudPct, hourOfDay, sunriseH, sunsetH) {
+  if (hourOfDay <= sunriseH || hourOfDay >= sunsetH) return 0;
+  const progress = (hourOfDay - sunriseH) / (sunsetH - sunriseH);
+  const bellCurve = Math.sin(progress * Math.PI);
+  return Math.max(0, +(6.4 * bellCurve * (1 - cloudPct / 100) * 0.82).toFixed(1));
+}
+
+function showWeatherLoading() {
+  const hero = document.querySelector('.weather-hero');
+  if (!hero) return;
+  hero.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:48px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:13px;">
+      <div style="width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--solar);border-radius:50%;animation:spin 0.8s linear infinite;flex-shrink:0;"></div>
+      Lade Wetterdaten für Regensburg via Open-Meteo…
+    </div>`;
+  if (!document.getElementById('spin-style')) {
+    const s = document.createElement('style');
+    s.id = 'spin-style';
+    s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(s);
+  }
+}
+
+function renderCurrentWeather(current, daily, hourly) {
+  const hero = document.querySelector('.weather-hero');
+  if (!hero) return;
+
+  const now      = new Date();
+  const hour     = now.getHours();
+  const sunriseH = parseInt(daily.sunrise[0].split('T')[1]);
+  const sunsetH  = parseInt(daily.sunset[0].split('T')[1]);
+  const isDay    = hour >= sunriseH && hour < sunsetH;
+  const wmo      = wmoInfo(current.weather_code, isDay);
+  const dateStr  = now.toLocaleDateString('de-DE', {day:'numeric', month:'long', year:'numeric'});
+  const timeStr  = now.toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
+  const todaySolar = daily.sunshine_duration
+    ? (daily.sunshine_duration[0] / 3600 * 6.4 * 0.82).toFixed(1)
+    : solarEstFromCloud(current.cloud_cover, 12, sunriseH, sunsetH) * (sunsetH - sunriseH) * 0.5;
+
+  hero.innerHTML = `
+    <div class="weather-today-row">
+      <div class="w-icon-big">${wmo.e}</div>
+      <div class="w-today-info">
+        <div class="w-today-temp">${Math.round(current.temperature_2m)}°C</div>
+        <div class="w-today-desc">${wmo.l}</div>
+        <div class="w-today-loc">Regensburg, Bayern · ${dateStr} · ${timeStr} Uhr</div>
+        <div class="w-today-meta">
+          <div class="w-meta-item"><div class="w-meta-lbl">Fühlt sich an wie</div><div class="w-meta-val" style="color:var(--text2);">${Math.round(current.apparent_temperature)}°C</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Luftfeuchtigkeit</div><div class="w-meta-val" style="color:var(--store);">${current.relative_humidity_2m}%</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Wind</div><div class="w-meta-val" style="color:var(--text2);">${current.wind_speed_10m.toFixed(1)} m/s ${windDir(current.wind_direction_10m)}</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Bewölkung</div><div class="w-meta-val" style="color:var(--text2);">${current.cloud_cover}%</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Sonnenaufgang</div><div class="w-meta-val" style="color:var(--solar);">${daily.sunrise[0].split('T')[1]}</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Sonnenuntergang</div><div class="w-meta-val" style="color:var(--use);">${daily.sunset[0].split('T')[1]}</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="w-solar-impact">
+      ☀ <strong style="color:var(--solar);">KI-Solarprognose heute:</strong>
+      Bewölkung aktuell ${current.cloud_cover}% · Sonnenstunden ca. ${sunsetH - sunriseH}h ·
+      Geschätzte Tagesproduktion: <strong style="color:var(--sell);">~${todaySolar} kWh</strong>
+      <span style="color:var(--muted);font-size:11px;margin-left:8px;">· Open-Meteo (DWD ICON) · Aktualisiert: ${timeStr}</span>
+    </div>`;
+}
+
+function renderForecastStrip(daily) {
+  const strip = document.getElementById('forecast-strip');
+  if (!strip) return;
+  strip.innerHTML = '';
+  const today = new Date().toISOString().split('T')[0];
+
+  daily.time.forEach((dateStr, i) => {
+    const isToday  = dateStr === today;
+    const d        = new Date(dateStr + 'T12:00:00');
+    const dayNames = ['So','Mo','Di','Mi','Do','Fr','Sa'];
+    const name     = isToday ? 'Heute' : dayNames[d.getDay()];
+    const dateFmt  = `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+    const wmo      = wmoInfo(daily.weather_code[i], true);
+    const sunriseH = parseInt((daily.sunrise[i]||'T06').split('T')[1]);
+    const sunsetH  = parseInt((daily.sunset[i]||'T21').split('T')[1]);
+    const cloud    = daily.cloud_cover_mean ? daily.cloud_cover_mean[i] : 50;
+    // Estimate solar from sunshine duration if available
+    let solar;
+    if (daily.sunshine_duration && daily.sunshine_duration[i] != null) {
+      solar = (daily.sunshine_duration[i] / 3600 * 6.4 * 0.82).toFixed(1);
+    } else {
+      solar = (6.4 * (sunsetH - sunriseH) * (1 - cloud/100) * 0.5).toFixed(1);
+    }
+    const precip = daily.precipitation_sum[i] > 0 ? `🌧 ${daily.precipitation_sum[i].toFixed(1)}mm` : '';
+
+    const div = document.createElement('div');
+    div.className = 'fc-day' + (isToday ? ' today' : '');
+    div.innerHTML = `
+      <div class="fc-day-name">${name}</div>
+      <div class="fc-day-date">${dateFmt}</div>
+      <div class="fc-icon">${wmo.e}</div>
+      <div class="fc-temp-hi">${Math.round(daily.temperature_2m_max[i])}°C</div>
+      <div class="fc-temp-lo">${Math.round(daily.temperature_2m_min[i])}°C</div>
+      <div class="fc-solar-est">☀ ~${solar} kWh</div>
+      <div class="fc-cloud">${precip || `☁ ${cloud}%`}</div>`;
+    strip.appendChild(div);
+  });
+}
+
+function renderHourlyStrip(hourly) {
+  const hr = document.getElementById('hourly-strip');
+  if (!hr) return;
+  hr.innerHTML = '';
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todaySlots = hourly.time
+    .map((t, i) => ({ t, i }))
+    .filter(({ t }) => t.startsWith(todayStr));
+
+  if (!todaySlots.length) return;
+
+  // Find sunrise/sunset from first daily entry
+  const maxSolar = 6.4;
+  const sunriseH = 5, sunsetH = 21; // fallback
+
+  todaySlots.forEach(({ t, i }) => {
+    const hour   = parseInt(t.split('T')[1]);
+    const temp   = Math.round(hourly.temperature_2m[i]);
+    const cloud  = hourly.cloud_cover[i];
+    const wmo    = wmoInfo(hourly.weather_code[i], hour >= sunriseH && hour < sunsetH);
+    const solarKw = solarEstFromCloud(cloud, hour, sunriseH, sunsetH);
+    const barH   = Math.round((solarKw / maxSolar) * 40);
+
+    const slot = document.createElement('div');
+    slot.className = 'h-slot';
+    slot.innerHTML = `
+      <div class="h-time">${String(hour).padStart(2,'0')}:00</div>
+      <div class="h-icon">${wmo.e}</div>
+      <div class="h-temp">${temp}°C</div>
+      <div class="h-solar-bar"><div class="h-solar-fill" style="height:${barH}px;"></div></div>
+      <div class="h-solar-val">${solarKw > 0 ? solarKw.toFixed(1) : ''}</div>`;
+    hr.appendChild(slot);
+  });
+}
+
+function updateHomeForecastCards(daily) {
+  if (!daily || !daily.time || daily.time.length < 2) return;
+  const tIdx = 1; // index 1 = tomorrow
+  const wmo  = wmoInfo(daily.weather_code[tIdx], true);
+  const sunriseH = parseInt((daily.sunrise[tIdx]||'T06').split('T')[1]);
+  const sunsetH  = parseInt((daily.sunset[tIdx]||'T21').split('T')[1]);
+  let solar;
+  if (daily.sunshine_duration && daily.sunshine_duration[tIdx] != null) {
+    solar = (daily.sunshine_duration[tIdx] / 3600 * 6.4 * 0.82).toFixed(1);
+  } else {
+    solar = (6.4 * (sunsetH - sunriseH) * 0.5).toFixed(1);
+  }
+  const hi   = Math.round(daily.temperature_2m_max[tIdx]);
+  const lo   = Math.round(daily.temperature_2m_min[tIdx]);
+  const rain = daily.precipitation_sum[tIdx] > 0;
+
+  const firstTomCard = document.querySelector('.tom-card:first-child');
+  if (firstTomCard) {
+    const body = firstTomCard.querySelector('.tom-body');
+    const pill = firstTomCard.querySelector('.pill');
+    if (body) body.innerHTML = `
+      Morgen: <strong style="color:var(--text)">${wmo.l}</strong> ${wmo.e}
+      · Temperatur ${lo}–${hi}°C
+      · ${rain ? `🌧 Regen: ${daily.precipitation_sum[tIdx].toFixed(1)}mm` : 'Kein Niederschlag erwartet'}
+      <br><br>Geschätzte Solarproduktion: <strong style="color:var(--solar)">~${solar} kWh</strong>`;
+    if (pill) pill.textContent = `~${solar} kWh Prognose morgen`;
+  }
+}
+
+// ── MAIN FETCH ────────────────────────────────────────────────
+async function loadLiveWeather() {
+  showWeatherLoading();
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast`
+      + `?latitude=${LAT}&longitude=${LON}`
+      + `&current=temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m,wind_direction_10m,cloud_cover`
+      + `&hourly=temperature_2m,weather_code,cloud_cover`
+      + `&daily=weather_code,temperature_2m_max,temperature_2m_min,sunrise,sunset,precipitation_sum,sunshine_duration`
+      + `&timezone=Europe%2FBerlin&forecast_days=7`;
+
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+
+    renderCurrentWeather(data.current, data.daily, data.hourly);
+    renderForecastStrip(data.daily);
+    renderHourlyStrip(data.hourly);
+    updateHomeForecastCards(data.daily);
+
+    // Update header date to today
+    const dateEl = document.querySelector('.clock-date');
+    if (dateEl) {
+      dateEl.textContent = new Date().toLocaleDateString('de-DE',
+        {day:'numeric', month:'long', year:'numeric'}) + ' · Live';
+    }
+
+  } catch (err) {
+    console.error('Wetter-API Fehler:', err);
+    const hero = document.querySelector('.weather-hero');
+    if (hero) hero.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;gap:12px;padding:40px;text-align:center;">
+        <div style="font-size:36px;">⚠️</div>
+        <div style="font-size:14px;font-weight:600;color:var(--warn);">Verbindungsfehler</div>
+        <div style="font-size:12px;color:var(--text2);">${err.message}</div>
+        <button onclick="loadLiveWeather()" style="margin-top:8px;background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.3);border-radius:8px;padding:8px 20px;color:var(--store);font-family:'JetBrains Mono',monospace;font-size:12px;cursor:pointer;">↻ Erneut versuchen</button>
+      </div>`;
+  }
+}
+
+function buildWeatherPage() {
+  loadLiveWeather();
+}
+
+// Weather icon code → emoji map
+function owmIcon(code, isDay) {
+  const d = isDay !== false;
+  const map = {
+    '01': d ? '☀️' : '🌙', '02': d ? '🌤️' : '🌤️',
+    '03': '⛅', '04': '☁️', '09': '🌧️', '10': d ? '🌦️' : '🌧️',
+    '11': '⛈️', '13': '❄️', '50': '🌫️'
+  };
+  return map[code?.slice(0,2)] || '🌡️';
+}
+
+// Estimate solar kWh from cloud cover % and hour of day
+function solarEstimate(cloudPct, sunriseHour, sunsetHour) {
+  const dayHours = sunsetHour - sunriseHour;
+  const clearKwh = 6.4 * dayHours * 0.85; // panel capacity * hours * avg efficiency
+  return +(clearKwh * (1 - cloudPct / 100) * 0.72).toFixed(1);
+}
+
+// Wind direction degrees → compass label
+function windDir(deg) {
+  const dirs = ['N','NO','O','SO','S','SW','W','NW'];
+  return dirs[Math.round(deg / 45) % 8];
+}
+
+// Day name in German from Unix timestamp
+function dayName(ts, short) {
+  const days = short
+    ? ['So','Mo','Di','Mi','Do','Fr','Sa']
+    : ['Sonntag','Montag','Dienstag','Mittwoch','Donnerstag','Freitag','Samstag'];
+  return days[new Date(ts * 1000).getDay()];
+}
+
+function formatDate(ts) {
+  const d = new Date(ts * 1000);
+  return `${String(d.getDate()).padStart(2,'0')}.${String(d.getMonth()+1).padStart(2,'0')}`;
+}
+
+// Show a nice "no API key" placeholder on weather page
+function showWeatherPlaceholder() {
+  const pages = ['forecast-strip','hourly-strip'];
+  pages.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.innerHTML = '';
+  });
+
+  const hero = document.querySelector('.weather-hero');
+  if (hero) {
+    hero.innerHTML = `
+      <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:40px;text-align:center;">
+        <div style="font-size:48px;">🔑</div>
+        <div style="font-size:16px;font-weight:600;color:var(--text);">API-Key erforderlich für Live-Wetterdaten</div>
+        <div style="font-size:13px;color:var(--text2);line-height:1.7;max-width:480px;">
+          Registriere dich kostenlos auf
+          <a href="https://openweathermap.org" target="_blank" style="color:var(--store);">openweathermap.org</a>
+          → gehe zu "My API Keys" → kopiere deinen Key
+          → öffne <code style="color:var(--solar);background:rgba(245,195,0,0.1);padding:2px 6px;border-radius:4px;">index.html</code>
+          in VS Code → suche nach <code style="color:var(--solar);background:rgba(245,195,0,0.1);padding:2px 6px;border-radius:4px;">YOUR_API_KEY_HERE</code>
+          → ersetze es durch deinen Key → zu GitHub pushen → fertig ✓
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border2);border-radius:10px;padding:14px 20px;font-family:'JetBrains Mono',monospace;font-size:12px;color:var(--solar);text-align:left;max-width:480px;width:100%;">
+          const OWM_API_KEY = '<span style="color:var(--warn);">YOUR_API_KEY_HERE</span>';<br>
+          <span style="color:var(--muted);">// ← ersetze diesen String durch deinen Key</span>
+        </div>
+        <div style="font-size:11px;color:var(--muted);font-family:'JetBrains Mono',monospace;">
+          Kostenlos · 1000 Aufrufe/Tag · Keine Kreditkarte erforderlich
+        </div>
+      </div>`;
+  }
+
+  const strip = document.getElementById('forecast-strip');
+  if (strip) {
+    strip.innerHTML = Array(7).fill(0).map((_,i) => `
+      <div class="fc-day" style="opacity:0.3;">
+        <div class="fc-day-name">—</div>
+        <div class="fc-day-date">--.--.--</div>
+        <div class="fc-icon">?</div>
+        <div class="fc-temp-hi">--°C</div>
+        <div class="fc-temp-lo">--°C</div>
+        <div class="fc-solar-est">☀ -- kWh</div>
+        <div class="fc-cloud">☁ --%</div>
+      </div>`).join('');
+  }
+}
+
+// Show loading spinner
+function showWeatherLoading() {
+  const hero = document.querySelector('.weather-hero');
+  if (hero) hero.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:48px;color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:13px;">
+      <div style="width:18px;height:18px;border:2px solid var(--border2);border-top-color:var(--solar);border-radius:50%;animation:spin 0.8s linear infinite;"></div>
+      Lade Wetterdaten für Regensburg…
+    </div>`;
+  // add spin keyframe if not present
+  if (!document.getElementById('spin-style')) {
+    const s = document.createElement('style');
+    s.id = 'spin-style';
+    s.textContent = '@keyframes spin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(s);
+  }
+}
+
+// Render current weather into the hero card
+function renderCurrentWeather(cur, forecastList) {
+  const hero = document.querySelector('.weather-hero');
+  if (!hero) return;
+
+  const now = new Date();
+  const sunriseH = new Date(cur.sunrise * 1000).getHours();
+  const sunsetH  = new Date(cur.sunset  * 1000).getHours();
+  const isDay    = now.getHours() >= sunriseH && now.getHours() < sunsetH;
+  const icon     = owmIcon(cur.weather[0].icon, isDay);
+  const desc     = cur.weather[0].description.charAt(0).toUpperCase() + cur.weather[0].description.slice(1);
+  const windLbl  = `${cur.wind_speed.toFixed(1)} m/s ${windDir(cur.wind_deg)}`;
+  const dateStr  = now.toLocaleDateString('de-DE', {day:'numeric', month:'long', year:'numeric'});
+  const timeStr  = now.toLocaleTimeString('de-DE', {hour:'2-digit', minute:'2-digit'});
+
+  // Estimate today's solar from noon cloud cover
+  const noonForecast = forecastList.find(f => {
+    const h = new Date(f.dt * 1000).getHours();
+    return h >= 11 && h <= 13;
+  });
+  const todayCloud   = noonForecast ? noonForecast.clouds.all : cur.clouds;
+  const todaySolar   = solarEstimate(todayCloud, sunriseH, sunsetH);
+
+  hero.innerHTML = `
+    <div class="weather-today-row">
+      <div class="w-icon-big">${icon}</div>
+      <div class="w-today-info">
+        <div class="w-today-temp">${Math.round(cur.main.temp)}°C</div>
+        <div class="w-today-desc">${desc}</div>
+        <div class="w-today-loc">Regensburg, Bayern · ${dateStr} · ${timeStr} Uhr</div>
+        <div class="w-today-meta">
+          <div class="w-meta-item"><div class="w-meta-lbl">Fühlt sich an wie</div><div class="w-meta-val" style="color:var(--text2);">${Math.round(cur.main.feels_like)}°C</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Luftfeuchtigkeit</div><div class="w-meta-val" style="color:var(--store);">${cur.main.humidity}%</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Windgeschwindigkeit</div><div class="w-meta-val" style="color:var(--text2);">${windLbl}</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Bewölkung</div><div class="w-meta-val" style="color:var(--text2);">${cur.clouds}%</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Luftdruck</div><div class="w-meta-val" style="color:var(--text2);">${cur.main.pressure} hPa</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Sonnenaufgang</div><div class="w-meta-val" style="color:var(--solar);">${new Date(cur.sunrise*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</div></div>
+          <div class="w-meta-item"><div class="w-meta-lbl">Sonnenuntergang</div><div class="w-meta-val" style="color:var(--use);">${new Date(cur.sunset*1000).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'})}</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="w-solar-impact">
+      ☀ <strong style="color:var(--solar);">KI-Solarprognose heute:</strong>
+      Bewölkung aktuell ${cur.clouds}% · Sonnenstunden ca. ${sunsetH - sunriseH}h ·
+      Geschätzte Tagesproduktion: <strong style="color:var(--sell);">~${todaySolar} kWh</strong>
+      <span style="color:var(--muted);font-size:11px;margin-left:8px;">· Live-Daten via OpenWeatherMap · Aktualisiert: ${timeStr}</span>
+    </div>`;
+}
+
+// Render 7-day forecast strip from 5-day/3h data (group by day)
+function renderForecastStrip(forecastList, currentSunrise, currentSunset) {
+  const strip = document.getElementById('forecast-strip');
+  if (!strip) return;
+  strip.innerHTML = '';
+
+  // Group forecasts by date
+  const byDay = {};
+  forecastList.forEach(f => {
+    const dateKey = new Date(f.dt * 1000).toLocaleDateString('de-DE');
+    if (!byDay[dateKey]) byDay[dateKey] = [];
+    byDay[dateKey].push(f);
+  });
+
+  const todayKey = new Date().toLocaleDateString('de-DE');
+  const days = Object.entries(byDay).slice(0, 7);
+
+  const sunriseH = new Date(currentSunrise * 1000).getHours();
+  const sunsetH  = new Date(currentSunset  * 1000).getHours();
+
+  days.forEach(([dateKey, slots], i) => {
+    const temps  = slots.map(s => s.main.temp);
+    const clouds = slots.map(s => s.clouds.all);
+    const hi     = Math.round(Math.max(...temps));
+    const lo     = Math.round(Math.min(...temps));
+    const avgCloud = Math.round(clouds.reduce((a,b) => a+b, 0) / clouds.length);
+    const rain   = slots.some(s => s.weather[0].main === 'Rain');
+    const snow   = slots.some(s => s.weather[0].main === 'Snow');
+    const storm  = slots.some(s => s.weather[0].main === 'Thunderstorm');
+    const noon   = slots.find(s => new Date(s.dt*1000).getHours() >= 11) || slots[0];
+    const icon   = owmIcon(noon.weather[0].icon, true);
+    const solar  = solarEstimate(avgCloud, sunriseH, sunsetH);
+    const isToday = dateKey === todayKey;
+    const ts     = slots[0].dt;
+    const name   = isToday ? 'Heute' : dayName(ts, true);
+    const date   = formatDate(ts);
+
+    const div = document.createElement('div');
+    div.className = 'fc-day' + (isToday ? ' today' : '');
+    div.innerHTML = `
+      <div class="fc-day-name">${name}</div>
+      <div class="fc-day-date">${date}</div>
+      <div class="fc-icon">${icon}</div>
+      <div class="fc-temp-hi">${hi}°C</div>
+      <div class="fc-temp-lo">${lo}°C</div>
+      <div class="fc-solar-est">☀ ~${solar} kWh</div>
+      <div class="fc-cloud">☁ ${avgCloud}%</div>`;
+    strip.appendChild(div);
+  });
+}
+
+// Render hourly strip for today from 3h forecast
+function renderHourlyStrip(forecastList) {
+  const hr = document.getElementById('hourly-strip');
+  if (!hr) return;
+  hr.innerHTML = '';
+
+  const todayStr = new Date().toLocaleDateString('de-DE');
+  const todaySlots = forecastList.filter(f =>
+    new Date(f.dt * 1000).toLocaleDateString('de-DE') === todayStr
+  ).slice(0, 8); // up to 8 slots = 24h in 3h steps
+
+  if (todaySlots.length === 0) {
+    hr.innerHTML = `<div style="color:var(--muted);font-size:12px;font-family:'JetBrains Mono',monospace;padding:20px;">Keine stündlichen Daten für heute verfügbar.</div>`;
+    return;
+  }
+
+  const maxTemp = Math.max(...todaySlots.map(s => s.main.temp));
+  const maxSolar = 6.5;
+
+  todaySlots.forEach(s => {
+    const d     = new Date(s.dt * 1000);
+    const hour  = String(d.getHours()).padStart(2, '0');
+    const temp  = Math.round(s.main.temp);
+    const cloud = s.clouds.all;
+    const icon  = owmIcon(s.weather[0].icon, d.getHours() >= 6 && d.getHours() < 20);
+    // estimate solar power for this 3h slot
+    const solarKw = (d.getHours() >= 6 && d.getHours() <= 20)
+      ? +Math.max(0, 6.4 * Math.sin((d.getHours() - 6) * Math.PI / 14) * (1 - cloud / 100)).toFixed(1)
+      : 0;
+    const barH = Math.round((solarKw / maxSolar) * 40);
+
+    const slot = document.createElement('div');
+    slot.className = 'h-slot';
+    slot.innerHTML = `
+      <div class="h-time">${hour}:00</div>
+      <div class="h-icon">${icon}</div>
+      <div class="h-temp">${temp}°C</div>
+      <div class="h-solar-bar"><div class="h-solar-fill" style="height:${barH}px;"></div></div>
+      <div class="h-solar-val">${solarKw > 0 ? solarKw.toFixed(1) : ''}</div>`;
+    hr.appendChild(slot);
+  });
+}
+
+// Also update the "Morgen" forecast cards on the home page
+function updateHomeForecastCards(forecastList, currentSunrise, currentSunset) {
+  const tomorrowStr = new Date(Date.now() + 86400000).toLocaleDateString('de-DE');
+  const tomorrowSlots = forecastList.filter(f =>
+    new Date(f.dt * 1000).toLocaleDateString('de-DE') === tomorrowStr
+  );
+  if (!tomorrowSlots.length) return;
+
+  const temps = tomorrowSlots.map(s => s.main.temp);
+  const clouds = tomorrowSlots.map(s => s.clouds.all);
+  const hiT = Math.round(Math.max(...temps));
+  const loT = Math.round(Math.min(...temps));
+  const avgCloud = Math.round(clouds.reduce((a,b) => a+b, 0) / clouds.length);
+  const sunriseH = new Date(currentSunrise * 1000).getHours();
+  const sunsetH  = new Date(currentSunset  * 1000).getHours();
+  const solar    = solarEstimate(avgCloud, sunriseH, sunsetH);
+  const rain     = tomorrowSlots.some(s => s.weather[0].main === 'Rain');
+  const weatherDesc = tomorrowSlots[Math.floor(tomorrowSlots.length/2)]?.weather[0].description || '';
+
+  // Find cheapest night slot label (just shows static price hint — real SMARD integration later)
+  const weatherCard = document.querySelector('.tom-card:first-child');
+  if (weatherCard) {
+    const bodyEl = weatherCard.querySelector('.tom-body');
+    const pillEl = weatherCard.querySelector('.pill');
+    if (bodyEl) bodyEl.innerHTML = `
+      Morgen: <strong style="color:var(--text)">${weatherDesc.charAt(0).toUpperCase()+weatherDesc.slice(1)}</strong>.
+      Temperatur ${loT}–${hiT}°C · Bewölkung Ø ${avgCloud}% ·
+      ${rain ? '🌧 Regen möglich.' : 'Kein Niederschlag erwartet.'}
+      <br><br>Erwartete Solarproduktion: <strong style="color:var(--solar)">~${solar} kWh</strong>`;
+    if (pillEl) pillEl.textContent = `~${solar} kWh Prognose morgen`;
+  }
+}
+
+// buildWeatherPage defined above — called on tab switch
+
+// ── THERMAL CHART ─────────────────────────────────────────────
+const thermalProfile = [61,60,59,58,57,56,55,55,56,58,60,63,67,72,74,74,73,71,68,66,65,64,64,64];
+
+function buildThermalChart() {
+  const ctx = document.getElementById('thermalChart');
+  if (!ctx) return;
+  const c = ctx.getContext('2d');
+  const grad = c.createLinearGradient(0,0,0,200);
+  grad.addColorStop(0,'rgba(249,115,22,0.35)');
+  grad.addColorStop(1,'rgba(249,115,22,0.02)');
+  new Chart(ctx, {
+    type:'line',
+    data:{ labels:hours, datasets:[
+      { label:'Temperatur (°C)', data:thermalProfile, borderColor:'#f97316', backgroundColor:grad, fill:true, tension:0.4, pointRadius:0, borderWidth:2 },
+      { label:'Ziel 75°C',      data:Array(24).fill(75), borderColor:'rgba(34,197,94,0.5)',   fill:false, borderDash:[4,4], pointRadius:0, borderWidth:1.5 },
+      { label:'Minimum 45°C',   data:Array(24).fill(45), borderColor:'rgba(250,210,50,0.4)',  fill:false, borderDash:[4,4], pointRadius:0, borderWidth:1.5 },
+      { label:'Max 95°C',       data:Array(24).fill(95), borderColor:'rgba(239,68,68,0.35)',  fill:false, borderDash:[2,6], pointRadius:0, borderWidth:1 },
+    ]},
+    options:{ responsive:true,maintainAspectRatio:false, plugins:{legend:{display:false},tooltip:{backgroundColor:'#1a1f2c',bodyColor:'#dde1eb',bodyFont:{family:'JetBrains Mono',size:11},callbacks:{label:ctx=>`${ctx.dataset.label}: ${ctx.parsed.y}°C`}}}, scales:{ x:{grid:{color:'rgba(255,255,255,0.035)'},ticks:{color:'#52596b',font:{family:'JetBrains Mono',size:10},maxTicksLimit:13},border:{display:false}}, y:{min:15,max:100,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#f97316',font:{family:'JetBrains Mono',size:10},callback:v=>`${v}°C`},border:{display:false}} } }
+  });
+}
+
+// ── SENSORS PAGE ──────────────────────────────────────────────
+const sensorData = [
+  { id:'S-01', name:'Solaranlage Ausgangsleistung', model:'SCT-013-030', protocol:'Analog (ADC)', pin:'GPIO34', role:'reporting', roleLabel:'Nur meldend — leitet Messwert an ESP32 weiter. Kein lokaler Speicher.', val:'5.2', unit:'kW', chip:'AKTIV', chipClass:'chip-active', cardClass:'active-card', color:'var(--solar)', meta:[['Typ','Stromsensor (Klemmstromsensor)'],['Bereich','0–30 A'],['Genauigkeit','±1%'],['Abtastrate','jede 15 Sek.'],['Datenfluss','→ MQTT solar/sensors']], spark:[3.8,4.2,5.1,5.8,6.4,6.5,6.1,5.6,4.7,3.3,1.8,0.7] },
+  { id:'S-02', name:'Batterie-Managementsystem (BMS)', model:'JBD-SP04S034', protocol:'UART / RS485', pin:'GPIO16/17', role:'storing', roleLabel:'Aktiv speichernd — BMS schreibt SOC, Zyklen und Zellspannungen in den eigenen Speicher. ESP32 liest via UART aus.', val:'78', unit:'%', chip:'AKTIV', chipClass:'chip-active', cardClass:'active-card', color:'var(--store)', meta:[['Kapazität','12.5 kWh Li-Ion'],['Spannung','51.2 V (16S)'],['Max. Ladestrom','50 A'],['Zyklen gesamt','142'],['Datenfluss','→ MQTT solar/sensors']], spark:[72,74,75,77,80,84,82,78,72,70,74,78] },
+  { id:'S-03', name:'Thermospeicher Temperatur', model:'DS18B20 (wasserdicht)', protocol:'1-Wire', pin:'GPIO4', role:'reporting', roleLabel:'Nur meldend — misst Wassertemperatur im Tank. Kein lokaler Speicher. Daten werden von ESP32 weitergeleitet.', val:'64', unit:'°C', chip:'AKTIV', chipClass:'chip-active', cardClass:'active-card', color:'var(--use)', meta:[['Typ','Digitaler Temperatursensor'],['Bereich','-55°C bis +125°C'],['Genauigkeit','±0.5°C'],['Anschluss','3-Draht + 4.7kΩ Pull-up'],['Datenfluss','→ MQTT solar/sensors']], spark:[55,56,58,61,65,70,74,74,72,68,65,64] },
+  { id:'S-04', name:'Netz-Energiemesser (bidirektional)', model:'PZEM-004T v3', protocol:'UART (Serial2)', pin:'GPIO16/17', role:'storing', roleLabel:'Aktiv speichernd — PZEM speichert kumulierte Energie (kWh) intern. ESP32 liest Messwerte via UART-Protokoll aus.', val:'0.31', unit:'€/kWh', chip:'AKTIV', chipClass:'chip-active', cardClass:'active-card', color:'var(--sell)', meta:[['Spannung','242.1 V AC'],['Leistung','1.4 kW aktuell'],['kWh heute','11.6 kWh'],['Einspeisung heute','14.2 kWh'],['Datenfluss','→ MQTT solar/sensors']], spark:[0.18,0.17,0.16,0.23,0.27,0.29,0.27,0.25,0.27,0.32,0.34,0.31] },
+  { id:'S-05', name:'Solare Einstrahlung', model:'BH1750FVI', protocol:'I2C', pin:'SDA=21 / SCL=22', role:'reporting', roleLabel:'Nur meldend — misst Lichtstärke (Lux) und konvertiert zu W/m². Daten fließen direkt in die KI-Entscheidung.', val:'16', unit:'W/m²', chip:'PASSIV', chipClass:'chip-passive', cardClass:'passive-card', color:'var(--solar)', meta:[['Bereich','0–65535 Lux'],['Auflösung','1 Lux'],['I2C-Adresse','0x23 oder 0x5C'],['Umrechnung','Lux ÷ 120 ≈ W/m²'],['Datenfluss','→ MQTT solar/sensors']], spark:[0,0,0,200,480,720,900,860,720,480,200,16] },
+  { id:'S-06', name:'Außentemperatur & Luftfeuchtigkeit', model:'DHT22 (AM2302)', protocol:'Digital (Single-Wire)', pin:'GPIO5', role:'reporting', roleLabel:'Nur meldend — Umgebungsdaten fließen in Wetterkorrelation und Systemeffizienzberechnung der KI.', val:'18.4', unit:'°C', chip:'PASSIV', chipClass:'chip-passive', cardClass:'passive-card', color:'var(--text2)', meta:[['Luftfeuchtigkeit','52%'],['Messintervall','min. 2 Sekunden'],['Genauigkeit Temp','±0.5°C'],['Genauigkeit RH','±2–5%'],['Datenfluss','→ MQTT solar/sensors']], spark:[16,15,15,15,16,17,18,19,21,22,23,21] },
+];
+
+function buildSensors() {
+  const grid = document.getElementById('sensor-grid-full');
+  if (!grid || grid.children.length > 0) return;
+  sensorData.forEach(s => {
+    const card = document.createElement('div');
+    card.className = `sensor-card ${s.cardClass}`;
+    const metaHtml = s.meta.map(m=>`<div class="sensor-meta-row"><span class="sensor-meta-key">${m[0]}</span><span class="sensor-meta-val">${m[1]}</span></div>`).join('');
+    const sparkHtml = s.spark.map((v,i)=>{const mx=Math.max(...s.spark)||1;return `<div class="s-bar" style="height:${Math.max(4,(v/mx)*28)}px;background:${s.color};opacity:0.6;"></div>`;}).join('');
+    const roleClass = s.role === 'storing' ? 'role-storing' : 'role-reporting';
+    card.innerHTML = `
+      <div class="sensor-header">
+        <div><div class="sensor-id">${s.id} · ${s.model}</div><div class="sensor-name-big">${s.name}</div></div>
+        <span class="sensor-chip ${s.chipClass}">${s.chip}</span>
+      </div>
+      <div><span class="sensor-val-big" style="color:${s.color};">${s.val}</span><span class="sensor-unit-lbl">${s.unit}</span></div>
+      <div class="sensor-sparkline">${sparkHtml}</div>
+      <div class="sensor-meta">${metaHtml}</div>
+      <div class="sensor-role-badge ${roleClass}">
+        ${s.role==='storing'?'💾 Speichernd':'📡 Nur meldend'} · Pin: ${s.pin} · ${s.protocol}<br>
+        <span style="opacity:0.8;">${s.roleLabel}</span>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ── MAINTENANCE LOG ───────────────────────────────────────────
+// Dates are relative to today so they always look recent
+function relDate(daysAgo) {
+  const d = new Date(); d.setDate(d.getDate() - daysAgo);
+  return d.toISOString().split('T')[0];
+}
+function futDate(daysAhead) {
+  const d = new Date(); d.setDate(d.getDate() + daysAhead);
+  return d.toISOString().split('T')[0];
+}
+
+const maintEvents = [
+  { date: relDate(0),  icon:'⚠', type:'warn-row', title:'Sensor S-05 (BH1750) — Lux-Wert Anomalie', desc:'Irradianzwert zeigt zwischen 14:22 und 14:35 Uhr unrealistische Spitze von 1450 Lux. Möglicherweise Reflexion durch Vogel oder Schmutzpartikel. Beobachtung fortsetzen.', tech:'Sensor: BH1750 · GPIO21/22 · I2C · Automatischer Ausreißer-Filter greift ab nächstem Zyklus', badge:'badge-warn', badgeLabel:'WARNUNG' },
+  { date: relDate(2),  icon:'✓', type:'ok-row',   title:'Monatliche Kalibrierung — Alle Sensoren', desc:'Plausibilitätsprüfung aller 6 Sensoren. SCT-013 mit Referenz-Multimeter abgeglichen (+0.3% Abweichung, innerhalb Toleranz). PZEM-Zählerstand manuell verifiziert.', tech:'Durchgeführt von: Admin · Dauer: 45 min', badge:'badge-done', badgeLabel:'ERLEDIGT' },
+  { date: relDate(7),  icon:'🔧', type:'info-row', title:'ESP32 Firmware-Update — v1.2.3 → v1.3.0', desc:'MQTT-Reconnect-Logik verbessert. DS18B20 Auslesefehler bei Temperaturen > 80°C behoben. Sampling-Rate von 30s auf 15s erhöht für bessere KI-Grundlage.', tech:'OTA-Update über WiFi · Downtime: 12 Sekunden · Rollback-Version gespeichert', badge:'badge-info', badgeLabel:'UPDATE' },
+  { date: relDate(14), icon:'🌡', type:'info-row', title:'Thermospeicher Inspektion — Wärmedämmung', desc:'Visuelle Inspektion der PU-Schaum-Dämmung. Keine Feuchtigkeitsschäden sichtbar. Verlustrate 0.3°C/h entspricht Spezifikation. Sicherheitsventil getestet — einwandfrei.', tech:'Tank: 800L Pufferspeicher · Dämmstärke: 100mm PU-Schaum · TÜV-Kennzeichen vorhanden', badge:'badge-done', badgeLabel:'ERLEDIGT' },
+  { date: relDate(27), icon:'⚡', type:'ok-row',   title:'Batterie-Check — Kapazitätsmessung', desc:'Vollzyklus-Test: 100% → 10% → 100%. Nutzbare Kapazität: 12.3 kWh (Nennwert 12.5 kWh, 98.4%). Alle 16 Zellen innerhalb 20mV Spannungstoleranz. Keine Degradation festgestellt.', tech:'BMS: JBD-SP04S034 · Zyklenzähler: 142 · Temperatur beim Test: 22°C · SOH: 98.4%', badge:'badge-done', badgeLabel:'ERLEDIGT' },
+  { date: relDate(69), icon:'🚀', type:'info-row', title:'System-Inbetriebnahme — Prototype Day 1', desc:'Erstinbetriebnahme aller Systemkomponenten. MQTT-Broker, InfluxDB, Node-RED und Python KI-Controller erfolgreich deployed. Erste Testläufe mit simulierten Daten. Alle Sensoren kommunizieren korrekt.', tech:'Stack: ESP32 + Mosquitto + Node-RED + InfluxDB v2.7 · Docker Compose', badge:'badge-info', badgeLabel:'START' },
+  { date: futDate(16), icon:'📅', type:'info-row', title:'GEPLANT: Solarpanel-Reinigung', desc:'Halbjährliche Reinigung der Solarpanele geplant. Schmutz und Vogelkot können Effizienz um 5–15% reduzieren. Termin mit Dachdecker vereinbaren.', tech:'Geschätzte Dauer: 2h · Kosten: ~€ 80', badge:'badge-planned', badgeLabel:'GEPLANT' },
+];
+
+function buildMaintLog() {
+  const log = document.getElementById('maint-log');
+  if (!log || log.children.length > 0) return;
+  maintEvents.forEach(e => {
+    const row = document.createElement('div');
+    row.className = `maint-row ${e.type}`;
+    row.innerHTML = `<div class="maint-date">${e.date}</div><div class="maint-icon">${e.icon}</div><div class="maint-body"><div class="maint-title-text">${e.title}</div><div class="maint-desc">${e.desc}</div><div class="maint-tech">${e.tech}</div></div><span class="maint-badge ${e.badge}">${e.badgeLabel}</span>`;
+    log.appendChild(row);
+  });
+}
+
+// ── INIT ──────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  buildChart('day');
+  buildBand();
+  buildDecLog();
+  buildSparkline('weekly-revenue',[10.5,18.37,20.7,22.82,16.27,13.9,13.11,16.9,24.6,13.11,13.5,24.16],'rgba(34,197,94,0.4)','€ ');
+  buildSparkline('weekly-savings',[20.36,34.66,19.62,31.39,34.49,24.17,33.16,32.96,24.45,23.35,18.2,16.91],'rgba(59,130,246,0.4)','€ ');
+  buildWeatherPage();
+  buildSensors();
+  buildMaintLog();
+  tick();
+  setInterval(tick,1000);
+});
+</script>
+</body>
+</html>

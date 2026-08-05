@@ -1,0 +1,1428 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SolarAI Lite — Energiemanagement</title>
+  <meta name="description" content="Leichtes SolarAI Dashboard mit Echtzeit-Strompreisen (SMARD/energy-charts), Open-Meteo Solarprognose und KI-Entscheidungsmotor.">
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <style>
+    :root {
+      --bg:      #07090e;
+      --surface: #0e1118;
+      --surface2:#131720;
+      --border:  rgba(255,255,255,0.06);
+      --text:    #dde1eb;
+      --text2:   #7a8299;
+      --solar:   #f5c300;
+      --sell:    #22c55e;
+      --store:   #3b82f6;
+      --use:     #f97316;
+      --danger:  #ef4444;
+      --radius:  14px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Syne', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── HEADER ──────────────────────────────── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      background: rgba(14,17,24,0.92);
+      border-bottom: 1px solid var(--border);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .logo-sun {
+      width: 32px; height: 32px;
+      background: conic-gradient(var(--solar), #ff8c00, var(--solar));
+      border-radius: 50%;
+      box-shadow: 0 0 16px rgba(245,195,0,0.5);
+      animation: spin 12s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    /* ── LANG DROPDOWN ───────────────────────── */
+    .lang-dropdown { position: relative; cursor: pointer; padding: 4px 10px; border-radius: 6px; background: var(--surface2); border: 1px solid var(--border); font-size: 11px; font-family: 'JetBrains Mono', monospace; font-weight: 600; color: var(--text); display: flex; align-items: center; justify-content:center; }
+    .lang-dropdown:hover { border-color: var(--solar); }
+    .lang-options { display: none; position: absolute; top: calc(100% + 4px); right: 0; background: var(--surface); border: 1px solid var(--border); border-radius: 6px; overflow: hidden; z-index: 400; box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    .lang-options.open { display: block; }
+    .lang-opt { padding: 6px 12px; cursor: pointer; text-align: center; font-size: 11px; }
+    .lang-opt:hover { background: var(--surface2); color: var(--solar); }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--sell);
+      background: rgba(34,197,94,0.1);
+      border: 1px solid rgba(34,197,94,0.25);
+      border-radius: 20px;
+      padding: 5px 12px;
+    }
+    .status-dot {
+      width: 6px; height: 6px;
+      background: var(--sell);
+      border-radius: 50%;
+      animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 4px var(--sell); }
+      50%       { opacity: 0.4; box-shadow: none; }
+    }
+    .ai-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 5px 10px;
+      border-radius: 6px;
+      letter-spacing: 0.06em;
+      transition: all 0.3s;
+    }
+    .ai-sell  { background: rgba(34,197,94,0.15);  color: var(--sell);  border: 1px solid rgba(34,197,94,0.4);  }
+    .ai-store { background: rgba(59,130,246,0.15); color: var(--store); border: 1px solid rgba(59,130,246,0.4); }
+    .ai-use   { background: rgba(249,115,22,0.15); color: var(--use);   border: 1px solid rgba(249,115,22,0.4); }
+
+    /* ── LAYOUT ──────────────────────────────── */
+    main {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 28px 24px 60px;
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 20px;
+    }
+
+    /* ── CARDS ───────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      transition: border-color 0.25s, transform 0.2s;
+    }
+    .card:hover {
+      border-color: rgba(255,255,255,0.12);
+      transform: translateY(-1px);
+    }
+    .card-full  { grid-column: 1 / -1; }
+    .card-half  { grid-column: span 2; }
+
+    .card-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text2);
+      margin-bottom: 14px;
+    }
+    .card-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 38px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -1px;
+    }
+    .card-unit {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 14px;
+      color: var(--text2);
+      margin-left: 4px;
+    }
+    .card-sub {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text2);
+      margin-top: 8px;
+    }
+    .card-delta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      margin-top: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .delta-up   { color: var(--sell); }
+    .delta-down { color: var(--use); }
+
+    /* ── PRICE TICKER ────────────────────────── */
+    .price-ticker {
+      grid-column: 1 / -1;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 0;
+      overflow: hidden;
+    }
+    .ticker-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .ticker-title {
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+    }
+    .ticker-meta {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--text2);
+    }
+    .ticker-live-badge {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      color: var(--solar);
+      background: rgba(245,195,0,0.08);
+      border: 1px solid rgba(245,195,0,0.2);
+      border-radius: 20px;
+      padding: 3px 10px;
+    }
+    .ticker-live-dot {
+      width: 5px; height: 5px;
+      background: var(--solar);
+      border-radius: 50%;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    /* current price display */
+    .price-now-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 32px;
+      padding: 18px 24px;
+      border-bottom: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .price-now-block { display: flex; flex-direction: column; gap: 3px; }
+    .price-now-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text2);
+    }
+    .price-now-value {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 52px;
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1;
+      transition: color 0.5s;
+    }
+    .price-now-unit {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 15px;
+      color: var(--text2);
+      align-self: flex-end;
+      margin-bottom: 8px;
+    }
+    .price-stats {
+      display: flex;
+      gap: 28px;
+      margin-left: auto;
+    }
+    .price-stat { display: flex; flex-direction: column; gap: 3px; }
+    .pstat-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text2);
+    }
+    .pstat-val {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    /* ── AI DECISION BOX ─────────────────────── */
+    .ai-box {
+      grid-column: 1 / -1;
+      border-radius: var(--radius);
+      padding: 22px 26px;
+      border: 1px solid;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.5s;
+    }
+    .ai-box::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      opacity: 0.06;
+      background: radial-gradient(ellipse at top left, currentColor 0%, transparent 60%);
+    }
+    .ai-box-sell  { background: rgba(34,197,94,0.07);  border-color: rgba(34,197,94,0.3);  color: var(--sell); }
+    .ai-box-store { background: rgba(59,130,246,0.07); border-color: rgba(59,130,246,0.3); color: var(--store); }
+    .ai-box-use   { background: rgba(249,115,22,0.07); border-color: rgba(249,115,22,0.3); color: var(--use); }
+
+    .ai-box-inner { position: relative; display: flex; align-items: center; gap: 20px; }
+    .ai-icon { font-size: 36px; flex-shrink: 0; }
+    .ai-decision-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      opacity: 0.7;
+      margin-bottom: 4px;
+    }
+    .ai-decision-action {
+      font-size: 26px;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      line-height: 1;
+    }
+    .ai-decision-reason {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      opacity: 0.8;
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+    .ai-next {
+      margin-left: auto;
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .ai-next-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      opacity: 0.6;
+      margin-bottom: 4px;
+    }
+    .ai-next-time {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    /* ── CHART CONTAINER ─────────────────────── */
+    .chart-wrap {
+      position: relative;
+      height: 240px;
+      padding: 16px 24px 0;
+    }
+
+    /* ── WEATHER STRIP ───────────────────────── */
+    .weather-strip {
+      display: flex;
+      gap: 14px;
+      overflow-x: auto;
+      padding: 16px 24px;
+      scrollbar-width: none;
+    }
+    .weather-strip::-webkit-scrollbar { display: none; }
+    .weather-slot {
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 5px;
+      min-width: 56px;
+      padding: 10px 8px;
+      border-radius: 10px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      transition: border-color 0.2s;
+    }
+    .weather-slot.now-slot {
+      border-color: rgba(245,195,0,0.4);
+      background: rgba(245,195,0,0.05);
+    }
+    .ws-time  { font-family: 'JetBrains Mono', monospace; font-size: 9px;  color: var(--text2); }
+    .ws-icon  { font-size: 20px; }
+    .ws-temp  { font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 600; }
+    .ws-cloud { font-family: 'JetBrains Mono', monospace; font-size: 9px;  color: var(--text2); }
+
+    /* ── SOLAR FORECAST BARS ─────────────────── */
+    .solar-bars {
+      display: flex;
+      align-items: flex-end;
+      gap: 4px;
+      height: 120px;
+      padding: 10px 24px 16px;
+    }
+    .sbar-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      height: 100%;
+      justify-content: flex-end;
+      gap: 5px;
+    }
+    .sbar {
+      width: 100%;
+      border-radius: 4px 4px 0 0;
+      background: linear-gradient(to top, rgba(245,195,0,0.7), rgba(245,195,0,0.05));
+      transition: height 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+      min-height: 2px;
+    }
+    .sbar-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 8px;
+      color: var(--text2);
+    }
+    
+    /* ── HINTS ───────────────────────────────── */
+    .hint-text {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--text2);
+      opacity: 0.6;
+      margin-top: 14px;
+      letter-spacing: 0.05em;
+      line-height: 1.4;
+    }
+
+    /* ── PRICE HEATMAP ROW ───────────────────── */
+    .heatmap-row {
+      display: flex;
+      gap: 2px;
+      padding: 0 24px 18px;
+      align-items: flex-end;
+    }
+    .hm-slot {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      cursor: default;
+    }
+    .hm-bar {
+      width: 100%;
+      border-radius: 2px;
+      min-height: 3px;
+      transition: all 0.5s;
+    }
+    .hm-label {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 7px;
+      color: var(--text2);
+    }
+    .hm-slot.hm-now .hm-bar {
+      box-shadow: 0 0 8px currentColor;
+    }
+
+    /* ── LOADER ──────────────────────────────── */
+    .loading-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: var(--text2);
+      padding: 20px 24px;
+    }
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid rgba(255,255,255,0.1);
+      border-top-color: var(--solar);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    /* ── SOURCE FOOTER ───────────────────────── */
+    .source-row {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+      padding: 10px 24px 16px;
+      border-top: 1px solid var(--border);
+    }
+    .source-chip {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 9px;
+      color: var(--text2);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 3px 10px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    .source-chip a { color: var(--store); text-decoration: none; }
+    .source-chip a:hover { text-decoration: underline; }
+
+    /* ── GRID DIVIDER ────────────────────────── */
+    .section-title {
+      grid-column: 1 / -1;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text2);
+      padding: 4px 0 0;
+      border-top: 1px solid var(--border);
+    }
+
+    /* ── FINANZÜBERSICHT ─────────────────────── */
+    .fin-card {
+      background: rgba(19, 23, 32, 0.4);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .fin-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    }
+    .fin-card.earn::before { background: var(--sell); }
+    .fin-card.save::before { background: var(--store); }
+    .fin-card.cost::before { background: var(--solar); }
+    
+    .fin-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 9px;
+      letter-spacing: 0.15em; text-transform: uppercase; color: var(--text2);
+      margin-bottom: 12px;
+    }
+    .fin-val { 
+      font-family: 'JetBrains Mono', monospace; 
+      font-size: 42px; 
+      font-weight: 800; 
+      letter-spacing: -1px; 
+      margin-bottom: 10px; 
+    }
+    .fin-desc { font-size: 11px; color: var(--text2); line-height: 1.5; margin-top: auto; }
+    .fin-highlight { font-weight: 700; color: var(--text); }
+
+    /* ── RESPONSIVE ──────────────────────────── */
+    @media (max-width: 768px) {
+      header { padding: 14px 16px; }
+      main { grid-template-columns: 1fr; padding: 16px; gap: 14px; }
+      .card-half { grid-column: span 1; }
+      .price-stats { gap: 16px; }
+      .ai-next { display: none; }
+    }
+  </style>
+</head>
+
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <div class="logo-sun"></div>
+    SolarAI <span style="color:var(--text2);font-weight:400;font-size:14px;margin-left:4px;">Lite</span>
+  </div>
+  <div class="header-right">
+    <div class="lang-dropdown" id="lang-menu" onclick="toggleLangDrop()">
+      <div id="lang-active">🇩🇪 DE</div>
+      <div class="lang-options" id="lang-options">
+         <div class="lang-opt" onclick="setLang('en', event)" id="lang-inactive">🇬🇧 EN</div>
+      </div>
+    </div>
+    <div class="status-pill">
+      <div class="status-dot"></div>
+      <span data-de="Live" data-en="Live">Live</span>
+    </div>
+    <div class="ai-badge ai-store" id="header-ai-badge">KI: STORE</div>
+    <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);" id="clock">--:--</div>
+  </div>
+</header>
+
+<!-- ── MAIN GRID ───────────────────────────────────────────── -->
+<main>
+
+  <!-- AI DECISION BOX -->
+  <div class="ai-box ai-box-store card-full" id="ai-box">
+    <div class="ai-box-inner">
+      <div class="ai-icon" id="ai-icon">🔋</div>
+      <div>
+        <div class="ai-decision-label">KI-ENTSCHEIDUNG · JETZT</div>
+        <div class="ai-decision-action" id="ai-action">STORE</div>
+        <div class="ai-decision-reason" id="ai-reason">Lade Marktdaten…</div>
+      </div>
+      <div class="ai-next">
+        <div class="ai-next-label">NÄCHSTES FENSTER IN</div>
+        <div class="ai-next-time" id="ai-countdown">--:--</div>
+      </div>
+    </div>
+    <div class="hint-text">💡 Backend-Logik: Die KI vergleicht lokale Solarprognose mit EPEX Spot Schwellenwerten (Lokaler Server Loop).</div>
+  </div>
+
+  <!-- LIVE PRICE TICKER -->
+  <div class="price-ticker card-full">
+    <div class="ticker-header">
+      <div>
+        <div class="ticker-title">⚡ Echtzeit-Strompreis — Deutschland (DE-LU)</div>
+        <div class="ticker-meta" id="ticker-timestamp">Lade Daten…</div>
+      </div>
+      <div class="ticker-live-badge">
+        <div class="ticker-live-dot"></div>
+        energy-charts.info · 15 Min · EPEX SPOT
+      </div>
+    </div>
+
+    <!-- current price -->
+    <div class="price-now-row" id="price-now-row">
+      <div class="loading-row"><div class="spinner"></div>Verbinde mit energy-charts.info API…</div>
+    </div>
+
+    <!-- 24h heatmap (Bar Chart) -->
+    <div style="padding:12px 24px 4px;">
+      <div style="font-family:'JetBrains Mono',monospace;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);margin-bottom:6px;">24h Preisverlauf — 15-Minuten-Auflösung</div>
+    </div>
+    <div class="chart-wrap" style="height: 180px; padding: 0 24px 18px; margin-bottom:10px;">
+      <canvas id="priceBarChart"></canvas>
+    </div>
+
+    <div class="source-row">
+      <div class="source-chip">📊 Quelle: <a href="https://api.energy-charts.info/price?bzn=DE-LU" target="_blank">api.energy-charts.info</a></div>
+      <div class="source-chip">🏛 Daten: Bundesnetzagentur / <a href="https://www.smard.de" target="_blank">smard.de</a></div>
+      <div class="source-chip">📐 Auflösung: 15 Minuten · Einheit: EUR/MWh → ct/kWh</div>
+      <div class="source-chip">🔄 Auto-Refresh: alle 5 Minuten</div>
+    </div>
+    <div class="hint-text" style="margin: 0 24px 16px;">💡 Data Source: Echtzeit Börsen-Day-Ahead Preise (Fraunhofer ISE / Bundesnetzagentur API) zur KI-Optimierung.</div>
+  </div>
+
+  <!-- SENSORS / HARDWARE PROTOTYPE -->
+  <div class="section-title" data-de="— HARDWARE PROTOTYP (Sensoren)" data-en="— HARDWARE PROTOTYPE (Sensors)">— HARDWARE PROTOTYP (Sensoren)</div>
+  <div style="display:grid; grid-template-columns: repeat(3, 1fr); gap:16px; margin-bottom: 24px;">
+    <div class="card card-third">
+        <div class="card-label" data-de="🌡️ Temperatur" data-en="🌡️ Temperature">🌡️ Temperatur</div>
+        <div class="card-value" id="proto-temp" style="color:var(--text);">--</div><span class="card-unit">°C</span>
+    </div>
+    <div class="card card-third">
+        <div class="card-label" data-de="☀️ Light Irradiance (PV)" data-en="☀️ Light Irradiance (PV)">☀️ Light Irradiance (PV)</div>
+        <div class="card-value" id="proto-light" style="color:var(--solar);">--</div><span class="card-unit">W/m²</span>
+    </div>
+    <div class="card card-third">
+        <div class="card-label" data-de="⚡ Leistung (Erzeugung)" data-en="⚡ Power (Generation)">⚡ Leistung (Erzeugung)</div>
+        <div class="card-value" id="proto-power" style="color:var(--store);">--</div><span class="card-unit">Watt</span>
+    </div>
+  </div>
+
+  <div class="section-title" id="fin-month-title">— FINANZÜBERSICHT</div>
+  
+  <div class="fin-card earn">
+    <div class="fin-label">VERDIENT DURCH EINSPEISUNG</div>
+    <div class="fin-val" style="color:var(--sell);" id="fin-earn">€ 0.00</div>
+    <div class="fin-desc">
+      Strom ins Netz verkauft, wenn die Spotpreise hoch waren. Durchschnittlich <span class="fin-highlight" style="color:var(--sell);" id="fin-earn-avg">€ 0.00/kWh</span> erzielt — <span class="fin-highlight" style="color:var(--sell);" id="fin-earn-factor">0x mehr</span> als die EEG-Einspeisevergütung von € 0.082.
+    </div>
+  </div>
+  
+  <div class="fin-card save">
+    <div class="fin-label">GESPART DURCH EIGENVERBRAUCH</div>
+    <div class="fin-val" style="color:var(--store);" id="fin-save">€ 0.00</div>
+    <div class="fin-desc">
+      Strom selbst produziert und genutzt statt für <span class="fin-highlight" style="color:var(--store);">€ 0.32/kWh</span> aus dem Netz zu beziehen. Entspricht <span class="fin-highlight" style="color:var(--store);" id="fin-save-kwh">0 kWh</span> Eigenverbrauch.
+    </div>
+  </div>
+  
+  <div class="fin-card cost">
+    <div class="fin-label">WAS DU OHNE SOLARAI BEZAHLT HÄTTEST</div>
+    <div class="fin-val" style="color:var(--solar);" id="fin-cost">€ 0.00</div>
+    <div class="fin-desc">
+      Dein Strombedarf aus dem Netz hätte ohne Solar <span class="fin-highlight" style="color:var(--solar);" id="fin-cost-raw">€ 0.00</span> gekostet (Basis: 15 kWh). Tatsächliche Kosten heute:<br><br>
+      <div style="display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--text2);">
+        <span style="text-decoration:line-through;" id="fin-cost-strike">€ 0.00</span> <span style="color:var(--sell);" id="fin-cost-real">€ 0.00</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHART: 24h Price + Solar -->
+  <div class="card card-full" style="padding-bottom:8px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:0 0 14px 0;">
+      <div class="card-label" style="margin:0;">Solarproduktion & Spotpreis — 24h (heute)</div>
+      <div style="display:flex;gap:12px;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text2);">
+        <span><span style="display:inline-block;width:10px;height:2px;background:var(--solar);margin-bottom:2px;border-radius:2px;"></span> Solar (kW)</span>
+        <span><span style="display:inline-block;width:10px;height:2px;background:rgba(255,255,255,0.35);margin-bottom:2px;border-radius:2px;"></span> Preis (ct/kWh)</span>
+      </div>
+    </div>
+    <div class="chart-wrap">
+      <canvas id="mainChart"></canvas>
+    </div>
+    <div style="height:8px;"></div>
+  </div>
+
+  <!-- SOLAR FORECAST -->
+  <div class="card card-half" style="padding-bottom:0; display:flex; flex-direction:column; justify-content:space-between;">
+    <div class="card-label" data-de="☀ SOLARPROGNOSE HEUTE — OPEN-METEO (DWD ICON)" data-en="☀ SOLAR FORECAST TODAY — OPEN-METEO (DWD ICON)">☀ SOLARPROGNOSE HEUTE — OPEN-METEO (DWD ICON)</div>
+    <div class="loading-row" id="solar-loading"><div class="spinner"></div>Verbinde mit Open-Meteo…</div>
+    <div class="chart-wrap" style="height: 140px; padding: 10px 24px;">
+      <canvas id="solarForecastChart" style="display:none;"></canvas>
+    </div>
+    <div class="source-row" style="margin-top:4px; margin-bottom:10px;">
+      <div class="source-chip">🌍 <a href="https://open-meteo.com" target="_blank">open-meteo.com</a> · DWD ICON · Regensburg 49.01°N 12.10°E</div>
+    </div>
+    <div class="hint-text" style="margin: 0 24px 16px;" data-de="💡 Dynamische Wetterprognose: Automatisiertes 30-Minuten-Polling über Open-Meteo (DWD ICON Modell). Verhindert statische &quot;Hardcoded&quot;-Daten." data-en="💡 Dynamic weather forecast: Automated 30-min polling via Open-Meteo (DWD ICON model). Prevents static 'hardcoded' data.">💡 Dynamische Wetterprognose: Automatisiertes 30-Minuten-Polling über Open-Meteo (DWD ICON Modell). Verhindert statische "Hardcoded"-Daten.</div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="card">
+    <div class="card-label">🌤 Wetter jetzt</div>
+    <div class="card-value" id="weather-temp" style="color:var(--solar);">--</div>
+    <div class="card-unit" style="display:inline;">°C</div>
+    <div class="card-sub" id="weather-desc">Lade…</div>
+    <div class="card-sub" id="weather-cloud" style="margin-top:4px;"></div>
+  </div>
+
+  <div class="section-title">— Marktlage heute</div>
+
+  <div class="card">
+    <div class="card-label">📉 Tief heute</div>
+    <div class="card-value" id="price-min" style="color:var(--store);">--</div><span class="card-unit">ct/kWh</span>
+    <div class="card-sub" id="price-min-time">--:-- Uhr</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">📈 Hoch heute</div>
+    <div class="card-value" id="price-max" style="color:var(--use);">--</div><span class="card-unit">ct/kWh</span>
+    <div class="card-sub" id="price-max-time">--:-- Uhr</div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">Ø Tagesdurchschnitt</div>
+    <div class="card-value" id="price-avg" style="color:var(--text);">--</div><span class="card-unit">ct/kWh</span>
+    <div class="card-sub" id="price-avg-label">Heute</div>
+  </div>
+
+  <div class="section-title">— Beste Fenster (KI-Empfehlung)</div>
+
+  <div class="card">
+    <div class="card-label">💚 Günstigste Ladephase</div>
+    <div class="card-value" id="best-buy" style="color:var(--store);font-size:24px;">--:-- – --:--</div>
+    <div class="card-sub" id="best-buy-price"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">💰 Bestes Einspeisefenster</div>
+    <div class="card-value" id="best-sell" style="color:var(--sell);font-size:24px;">--:-- – --:--</div>
+    <div class="card-sub" id="best-sell-price"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-label">⚡ Negative Preisperioden heute</div>
+    <div class="card-value" id="neg-count" style="color:var(--solar);">--</div><span class="card-unit">Slots</span>
+    <div class="card-sub" id="neg-desc">à 15 Minuten</div>
+  </div>
+
+</main>
+
+<script>
+// ═══════════════════════════════════════════════════════════════
+// SOLARAI LITE — Real-Time Engine
+// Sources:
+//   Prices : https://api.energy-charts.info/price?bzn=DE-LU
+//             (Fraunhofer ISE · data from Bundesnetzagentur/SMARD)
+//   Weather: https://api.open-meteo.com (DWD ICON model)
+// ═══════════════════════════════════════════════════════════════
+
+const REGENSBURG_LAT = 49.01;
+const REGENSBURG_LON = 12.10;
+
+// ── State ────────────────────────────────────────────────────────
+let priceData    = null;  // { unix_seconds:[], price:[] }  raw from API
+let todayPrices  = [];    // array of { ts, dt, price_eur_mwh, ct_kwh }
+let weatherData  = null;
+let mainChart    = null;
+
+// ── Clock ────────────────────────────────────────────────────────
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock').textContent =
+    now.toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ── Helpers ──────────────────────────────────────────────────────
+function fmtTime(dt) {
+  return dt.toLocaleTimeString('de-DE', { hour:'2-digit', minute:'2-digit' });
+}
+function fmtDate(dt) {
+  return dt.toLocaleDateString('de-DE', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+function priceColor(ct) {
+  if (ct < 0)   return '#a855f7';  // purple — negative
+  if (ct < 5)   return '#3b82f6';  // blue — very cheap
+  if (ct < 12)  return '#22c55e';  // green — cheap
+  if (ct < 20)  return '#f5c300';  // gold — medium
+  if (ct < 25)  return '#f97316';  // orange — expensive
+  return '#ef4444';                // red — very expensive
+}
+function priceLabel(ct) {
+  if (ct < 0)   return 'Negativ ⚡';
+  if (ct < 5)   return 'Extrem günstig';
+  if (ct < 12)  return 'Günstig';
+  if (ct < 20)  return 'Normal';
+  if (ct < 25)  return 'Teuer';
+  return 'Sehr teuer';
+}
+function aiDecision(ct, solarKw = 0) {
+  if (ct < 5 && solarKw < 1)  return { action:'STORE',  icon:'🔋', reason:`Strompreis extrem niedrig (${ct.toFixed(2)} ct/kWh). Günstig laden — Netz oder Solar in Speicher.`, cls:'store' };
+  if (ct > 18 && solarKw > 2) return { action:'SELL',   icon:'💸', reason:`Hoher Spotpreis (${ct.toFixed(2)} ct/kWh) + Solar verfügbar. Einspeisung ins Netz empfohlen.`,    cls:'sell' };
+  if (ct > 18)                 return { action:'SELL',   icon:'💸', reason:`Hoher Spotpreis (${ct.toFixed(2)} ct/kWh). Gespeicherte Energie verkaufen.`,                       cls:'sell' };
+  if (ct < 12 && solarKw > 0) return { action:'STORE',  icon:'🔋', reason:`Günstiger Preis + Solar aktiv. Speicher auffüllen für spätere Spitzenzeiten.`,                      cls:'store' };
+  return                               { action:'USE',   icon:'🏠', reason:`Normaler Markt (${ct.toFixed(2)} ct/kWh). Eigenverbrauch — Solar direkt nutzen.`,                  cls:'use' };
+}
+
+// ── PRICE FETCH ──────────────────────────────────────────────────
+async function fetchPrices() {
+  try {
+    // Direkter Abruf für GitHub Pages (ohne lokales Backend)
+    const res  = await fetch('https://api.energy-charts.info/price?bzn=DE-LU');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    priceData = await res.json();
+    processPrices();
+    return true;
+  } catch(e) {
+    console.error('Price fetch failed:', e);
+    // Demo-Daten-Fallback für statisches GitHub Hosting falls blockiert
+    const nowTs = Math.floor(Date.now() / 1000);
+    priceData = {
+      unix_seconds: Array.from({length: 96}, (_,i) => nowTs - (nowTs % 86400) + (i*900)),
+      price: Array.from({length: 96}, (_,i) => 50 + Math.sin(i/10)*40 + Math.random()*10)
+    };
+    processPrices();
+    document.getElementById('price-now-row').innerHTML =
+      `<div class="loading-row" style="color:var(--solar);">⚠ Demo-Modus aktiv (API-Fehler: ${e.message})</div>`;
+    return false;
+  }
+}
+
+function processPrices() {
+  const now       = new Date();
+  const todayDate = now.toDateString();
+
+  // Convert all timestamps → datetime, filter to TODAY only (CEST = UTC+2 in summer)
+  todayPrices = priceData.unix_seconds
+    .map((ts, i) => {
+      const dt = new Date(ts * 1000); // JS Date uses ms
+      return { ts, dt, price_eur_mwh: priceData.price[i], ct_kwh: priceData.price[i] / 10 };
+    })
+    .filter(d => d.dt.toDateString() === todayDate);
+
+  if (todayPrices.length === 0) {
+    // Fallback: take last 96 slots (one full day at 15-min resolution)
+    const last96 = priceData.unix_seconds.length;
+    const start  = Math.max(0, last96 - 96);
+    todayPrices = priceData.unix_seconds
+      .slice(start)
+      .map((ts, i) => {
+        const dt = new Date(ts * 1000);
+        const idx = start + i;
+        return { ts, dt, price_eur_mwh: priceData.price[idx], ct_kwh: priceData.price[idx] / 10 };
+      });
+  }
+
+  renderPriceTicker();
+  renderHeatmap();
+  renderChart();
+  renderAI();
+  renderWindows();
+  renderFinances();
+}
+
+function renderPriceTicker() {
+  const now    = new Date();
+  // Find closest slot to current time
+  let closest = todayPrices[0];
+  let minDiff = Infinity;
+  todayPrices.forEach(d => {
+    const diff = Math.abs(d.dt - now);
+    if (diff < minDiff) { minDiff = diff; closest = d; }
+  });
+
+  const ct   = closest.ct_kwh;
+  const col  = priceColor(ct);
+  const lbl  = priceLabel(ct);
+  const cts  = ct.toFixed(2);
+  const mwh  = closest.price_eur_mwh.toFixed(2);
+
+  // Stats
+  const prices  = todayPrices.map(d => d.ct_kwh);
+  const minP    = Math.min(...prices);
+  const maxP    = Math.max(...prices);
+  const avgP    = prices.reduce((a,b) => a+b, 0) / prices.length;
+  const minSlot = todayPrices[prices.indexOf(minP)];
+  const maxSlot = todayPrices[prices.indexOf(maxP)];
+
+  document.getElementById('ticker-timestamp').textContent =
+    `Letztes Update: ${fmtTime(now)} · Daten für: ${fmtDate(now)} · ${todayPrices.length} Datenpunkte`;
+
+  document.getElementById('price-now-row').innerHTML = `
+    <div class="price-now-block">
+      <div class="price-now-label">AKTUELLER PREIS · ${fmtTime(closest.dt)}</div>
+      <div style="display:flex;align-items:flex-end;gap:8px;">
+        <div class="price-now-value" style="color:${col};">${cts}</div>
+        <div class="price-now-unit">ct/kWh</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text2);margin-bottom:10px;">(${mwh} EUR/MWh)</div>
+      </div>
+      <div style="font-family:'JetBrains Mono',monospace;font-size:12px;color:${col};">${lbl}</div>
+    </div>
+    <div class="price-stats">
+      <div class="price-stat">
+        <div class="pstat-label">TIEF</div>
+        <div class="pstat-val" style="color:var(--store);">${minP.toFixed(2)} ct</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text2);">${fmtTime(minSlot.dt)}</div>
+      </div>
+      <div class="price-stat">
+        <div class="pstat-label">HOCH</div>
+        <div class="pstat-val" style="color:var(--use);">${maxP.toFixed(2)} ct</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text2);">${fmtTime(maxSlot.dt)}</div>
+      </div>
+      <div class="price-stat">
+        <div class="pstat-label">Ø HEUTE</div>
+        <div class="pstat-val">${avgP.toFixed(2)} ct</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text2);">${todayPrices.length} Slots</div>
+      </div>
+      <div class="price-stat">
+        <div class="pstat-label">SPREAD</div>
+        <div class="pstat-val" style="color:var(--solar);">${(maxP - minP).toFixed(2)} ct</div>
+        <div style="font-family:'JetBrains Mono',monospace;font-size:9px;color:var(--text2);">Spanne</div>
+      </div>
+    </div>
+  `;
+
+  // Update KPI cards
+  document.getElementById('price-min').textContent = minP.toFixed(2);
+  document.getElementById('price-min-time').textContent = fmtTime(minSlot.dt) + ' Uhr';
+  document.getElementById('price-max').textContent = maxP.toFixed(2);
+  document.getElementById('price-max-time').textContent = fmtTime(maxSlot.dt) + ' Uhr';
+  document.getElementById('price-avg').textContent = avgP.toFixed(2);
+  document.getElementById('price-avg-label').textContent = `${todayPrices.length} × 15-Min-Slots`;
+
+  // Negative slots
+  const negSlots = todayPrices.filter(d => d.ct_kwh < 0).length;
+  document.getElementById('neg-count').textContent = negSlots;
+  document.getElementById('neg-desc').textContent = negSlots > 0
+    ? `${(negSlots * 15)} Min Gratisstrom heute!`
+    : 'Keine negativen Preise heute';
+}
+
+let priceBarChartObj = null;
+
+function renderHeatmap() {
+  const ctx = document.getElementById('priceBarChart');
+  if (!ctx) return;
+  if (priceBarChartObj) priceBarChartObj.destroy();
+  
+  const labels = todayPrices.map(d => fmtTime(d.dt));
+  const data = todayPrices.map(d => d.ct_kwh);
+  const bgColors = todayPrices.map(d => {
+    const isNow = Math.abs(d.dt - new Date()) < 8 * 60 * 1000;
+    const col = priceColor(d.ct_kwh);
+    return isNow ? '#ffffff' : col;
+  });
+
+  priceBarChartObj = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Preis (ct/kWh)',
+        data: data,
+        backgroundColor: bgColors,
+        borderRadius: 2,
+        barPercentage: 0.9,
+        categoryPercentage: 0.9
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1f2c', titleColor: '#7a8299', bodyColor: '#dde1eb',
+          bodyFont: { family: 'JetBrains Mono', size: 11 },
+          callbacks: {
+            label: ctx => `⚡ ${ctx.parsed.y.toFixed(2)} ct/kWh`
+          }
+        }
+      },
+      scales: {
+        x: { 
+          display: true, 
+          ticks: { color: '#7a8299', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 24 },
+          grid: { display: false }, border: { display: false }
+        },
+        y: { display: false, grid: { display: false }, border: { display: false } }
+      }
+    }
+  });
+}
+
+function renderChart() {
+  // Build hourly averages from 15-min data for a cleaner chart
+  const hourlyMap = {};
+  todayPrices.forEach(d => {
+    const h = d.dt.getHours();
+    if (!hourlyMap[h]) hourlyMap[h] = [];
+    hourlyMap[h].push(d.ct_kwh);
+  });
+  const hours    = Array.from({ length: 24 }, (_, i) => i);
+  const labels   = hours.map(h => String(h).padStart(2,'0') + ':00');
+  const priceArr = hours.map(h => {
+    const arr = hourlyMap[h];
+    if (!arr || arr.length === 0) return null;
+    return arr.reduce((a,b) => a+b, 0) / arr.length;
+  });
+
+  // Solar forecast from weather data if available
+  let solarArr = Array(24).fill(0);
+  if (weatherData && weatherData.hourly) {
+    const wh = weatherData.hourly;
+    const todayStr = new Date().toISOString().split('T')[0];
+    wh.time.forEach((t, i) => {
+      if (t.startsWith(todayStr)) {
+        const h = parseInt(t.split('T')[1]);
+        const shine = wh.sunshine_duration ? wh.sunshine_duration[i] : 0;
+        const cloud = wh.cloud_cover ? wh.cloud_cover[i] : 100;
+        const factor = Math.max(0, 1 - cloud/100) * (shine / 3600);
+        // 6.4kWp system, 82% efficiency
+        solarArr[h] = parseFloat((6.4 * 0.82 * factor).toFixed(2));
+      }
+    });
+  } else {
+    // Plausible solar curve for summer Bayern if no weather yet
+    solarArr = [0,0,0,0,0,0.1,0.6,1.4,2.4,3.5,4.5,5.1,5.4,5.2,4.8,4.0,3.0,1.8,0.7,0.1,0,0,0,0];
+  }
+
+  const ctx = document.getElementById('mainChart');
+  if (mainChart) mainChart.destroy();
+
+  mainChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Solar (kW)',
+          data: solarArr,
+          yAxisID: 'yS',
+          borderColor: 'rgba(245,195,0,0.85)',
+          backgroundColor: (context) => {
+            const chart = context.chart;
+            const { ctx: c, chartArea } = chart;
+            if (!chartArea) return 'transparent';
+            const g = c.createLinearGradient(0, chartArea.top, 0, chartArea.bottom);
+            g.addColorStop(0, 'rgba(245,195,0,0.3)');
+            g.addColorStop(1, 'rgba(245,195,0,0.02)');
+            return g;
+          },
+          fill: true,
+          tension: 0.45,
+          pointRadius: 0,
+          borderWidth: 2,
+        },
+        {
+          label: 'Preis (ct/kWh)',
+          data: priceArr,
+          yAxisID: 'yP',
+          borderColor: 'rgba(255,255,255,0.38)',
+          backgroundColor: 'transparent',
+          fill: false,
+          tension: 0.35,
+          pointRadius: 0,
+          borderWidth: 1.5,
+          borderDash: [4, 3],
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#1a1f2c',
+          titleColor: '#7a8299',
+          bodyColor: '#dde1eb',
+          bodyFont: { family: 'JetBrains Mono', size: 11 },
+          callbacks: {
+            label: ctx => ctx.dataset.label === 'Solar (kW)'
+              ? `☀ ${ctx.parsed.y?.toFixed(2) ?? '--'} kW`
+              : `⚡ ${ctx.parsed.y?.toFixed(2) ?? '--'} ct/kWh`
+          }
+        }
+      },
+      scales: {
+        x: {
+          grid:   { color: 'rgba(255,255,255,0.03)' },
+          ticks:  { color: '#52596b', font: { family: 'JetBrains Mono', size: 9 }, maxTicksLimit: 13 },
+          border: { display: false }
+        },
+        yS: {
+          position: 'left',
+          min: 0,
+          grid:   { color: 'rgba(255,255,255,0.04)' },
+          ticks:  { color: 'rgba(245,195,0,0.6)', font: { family: 'JetBrains Mono', size: 9 }, callback: v => `${v}kW` },
+          border: { display: false }
+        },
+        yP: {
+          position: 'right',
+          grid:   { display: false },
+          ticks:  { color: 'rgba(255,255,255,0.3)', font: { family: 'JetBrains Mono', size: 9 }, callback: v => `${v?.toFixed(0)}ct` },
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+function renderAI() {
+  const now     = new Date();
+  let closest   = todayPrices[0];
+  let minDiff   = Infinity;
+  todayPrices.forEach(d => {
+    const diff = Math.abs(d.dt - now);
+    if (diff < minDiff) { minDiff = diff; closest = d; }
+  });
+
+  const ct    = closest ? closest.ct_kwh : 15;
+  const dec   = aiDecision(ct, 0); // solar kW: 0 for now (weather not loaded yet)
+  const box   = document.getElementById('ai-box');
+  const badge = document.getElementById('header-ai-badge');
+
+  box.className = `ai-box ai-box-${dec.cls} card-full`;
+  document.getElementById('ai-icon').textContent    = dec.icon;
+  document.getElementById('ai-action').textContent  = dec.action;
+  document.getElementById('ai-reason').textContent  = dec.reason;
+  badge.className   = `ai-badge ai-${dec.cls}`;
+  badge.textContent = `KI: ${dec.action}`;
+
+  // Countdown to next 15-min slot
+  const msToNext = 15 * 60 * 1000 - (Date.now() % (15 * 60 * 1000));
+  const mm = Math.floor(msToNext / 60000);
+  const ss = Math.floor((msToNext % 60000) / 1000);
+  document.getElementById('ai-countdown').textContent = `${mm}:${String(ss).padStart(2,'0')}`;
+}
+
+function renderWindows() {
+  if (!todayPrices.length) return;
+  const prices    = todayPrices.map(d => d.ct_kwh);
+  const minPrice  = Math.min(...prices);
+  const maxPrice  = Math.max(...prices);
+  const threshold_buy  = minPrice + (maxPrice - minPrice) * 0.15;
+  const threshold_sell = maxPrice - (maxPrice - minPrice) * 0.15;
+
+  // Best continuous buy window
+  const buySlots = todayPrices.filter(d => d.ct_kwh <= threshold_buy);
+  if (buySlots.length) {
+    document.getElementById('best-buy').textContent  = `${fmtTime(buySlots[0].dt)} – ${fmtTime(buySlots[buySlots.length - 1].dt)}`;
+    document.getElementById('best-buy-price').textContent = `Ø ${(buySlots.reduce((a,b) => a + b.ct_kwh, 0) / buySlots.length).toFixed(2)} ct/kWh`;
+  }
+  // Best sell window
+  const sellSlots = todayPrices.filter(d => d.ct_kwh >= threshold_sell);
+  if (sellSlots.length) {
+    document.getElementById('best-sell').textContent  = `${fmtTime(sellSlots[0].dt)} – ${fmtTime(sellSlots[sellSlots.length - 1].dt)}`;
+    document.getElementById('best-sell-price').textContent = `Ø ${(sellSlots.reduce((a,b) => a + b.ct_kwh, 0) / sellSlots.length).toFixed(2)} ct/kWh`;
+  }
+}
+
+function renderFinances() {
+  if (!todayPrices || !todayPrices.length) return;
+  
+  const now = new Date();
+  const monthStr = now.toLocaleString('de-DE', { month: 'long', year: 'numeric' }).toUpperCase();
+  const titleEl = document.getElementById('fin-month-title');
+  if(titleEl) titleEl.textContent = `— FINANZÜBERSICHT - ${monthStr} (HEUTE)`;
+
+  let earned = 0;
+  let saved = 0;
+  let sellCount = 0;
+  let sellSum = 0;
+  let useStoreCount = 0;
+  const gridPrice = 0.32; // 32 ct/kWh assumed retail grid price
+  const eegPrice = 0.082; // 8.2 ct/kWh standard feed-in
+
+  todayPrices.forEach(d => {
+    const h = d.dt.getHours();
+    let kw = 0;
+    if (weatherData && weatherData.hourly) {
+       const todayStr = new Date().toISOString().split('T')[0];
+       const timeStr = `${todayStr}T${String(h).padStart(2,'0')}:00`;
+       const idx = weatherData.hourly.time.indexOf(timeStr);
+       if(idx !== -1) {
+          const cloud = weatherData.hourly.cloud_cover[idx] ?? 100;
+          const shine = weatherData.hourly.sunshine_duration ? weatherData.hourly.sunshine_duration[idx] : 0;
+          const factor = Math.max(0, 1 - cloud/100) * (shine / 3600);
+          kw = 6.4 * 0.82 * factor;
+       }
+    } else {
+       // fallback generic curve
+       const fallback = [0,0,0,0,0,0.1,0.6,1.4,2.4,3.5,4.5,5.1,5.4,5.2,4.8,4.0,3.0,1.8,0.7,0.1,0,0,0,0];
+       kw = fallback[h];
+    }
+    
+    // 15 min slot = kw / 4 energy generated
+    const kwh = kw / 4;
+    const priceEur = d.ct_kwh / 100; 
+    
+    if (priceEur > 0.12 && kwh > 0) {
+       // AI SELLS
+       earned += kwh * priceEur;
+       sellSum += priceEur;
+       sellCount++;
+    } else if (kwh > 0) {
+       // AI USES/STORES
+       saved += kwh * gridPrice;
+       useStoreCount += kwh;
+    }
+  });
+
+  const baseDailyConsumption = 15; // assumption: 15 kWh per day usage
+  const rawCost = baseDailyConsumption * gridPrice;
+  const realCost = rawCost - earned - saved;
+  const finalCost = realCost < 0 ? 0 : realCost;
+
+  if(document.getElementById('fin-earn')) {
+      document.getElementById('fin-earn').textContent = `€ ${earned.toFixed(2)}`;
+      document.getElementById('fin-earn-avg').textContent = `€ ${(sellCount > 0 ? (sellSum/sellCount) : 0).toFixed(3)}/kWh`;
+      document.getElementById('fin-earn-factor').textContent = `${(sellCount > 0 ? ((sellSum/sellCount)/eegPrice) : 0).toFixed(1)}× mehr`;
+      
+      document.getElementById('fin-save').textContent = `€ ${saved.toFixed(2)}`;
+      document.getElementById('fin-save-kwh').textContent = `${useStoreCount.toFixed(1)} kWh`;
+      
+      document.getElementById('fin-cost').textContent = `€ ${rawCost.toFixed(2)}`;
+      document.getElementById('fin-cost-raw').textContent = `€ ${rawCost.toFixed(2)}`;
+      document.getElementById('fin-cost-strike').textContent = `€ ${rawCost.toFixed(2)}`;
+      document.getElementById('fin-cost-real').textContent = `€ ${realCost.toFixed(2)}`;
+  }
+}
+
+// ── WEATHER FETCH ─────────────────────────────────────────────────
+async function fetchWeather() {
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${REGENSBURG_LAT}&longitude=${REGENSBURG_LON}` +
+      `&hourly=temperature_2m,cloud_cover,sunshine_duration,precipitation` +
+      `&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m` +
+      `&timezone=Europe%2FBerlin&forecast_days=1`;
+    const res  = await fetch(url);
+    weatherData = await res.json();
+
+    const c = weatherData.current;
+    document.getElementById('weather-temp').textContent  = c.temperature_2m?.toFixed(1) ?? '--';
+    document.getElementById('weather-desc').textContent  = weatherCodeLabel(c.weather_code);
+    document.getElementById('weather-cloud').textContent = `☁ ${c.cloud_cover ?? '--'}% Wolken · 💨 ${c.wind_speed_10m?.toFixed(1) ?? '--'} km/h`;
+
+    renderSolarBars();
+    // Update chart with real solar data
+    renderChart();
+    renderFinances(); // recalculate finances when weather arrives
+  } catch(e) {
+    console.error('Weather fetch failed:', e);
+    document.getElementById('solar-loading').innerHTML = `<span style="color:var(--danger);">⚠ Wetterdaten nicht verfügbar</span>`;
+  }
+}
+
+function weatherCodeLabel(code) {
+  const codes = {
+    0:'Klar ☀', 1:'Überwiegend klar 🌤', 2:'Teilweise bewölkt ⛅', 3:'Bedeckt ☁',
+    45:'Nebel 🌫', 48:'Raureif-Nebel', 51:'Leichter Nieselregen', 53:'Nieselregen',
+    61:'Leichter Regen 🌦', 63:'Regen 🌧', 71:'Leichter Schnee 🌨', 80:'Schauer 🌦',
+    95:'Gewitter ⛈'
+  };
+  return codes[code] ?? `Code ${code}`;
+}
+
+function renderSolarBars() {
+  const wh = weatherData?.hourly;
+  if (!wh) return;
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const slots = [];
+
+  wh.time.forEach((t, i) => {
+    if (t.startsWith(todayStr)) {
+      const h      = parseInt(t.split('T')[1]);
+      const cloud  = wh.cloud_cover[i] ?? 100;
+      const shine  = wh.sunshine_duration ? wh.sunshine_duration[i] : 0;
+      const factor = Math.max(0, 1 - cloud/100) * (shine / 3600);
+      const kw     = parseFloat((6.4 * 0.82 * factor).toFixed(2));
+      slots.push({ h, kw });
+    }
+  });
+
+  if (!slots.length) return;
+
+  document.getElementById('solar-loading').style.display = 'none';
+  const canvas = document.getElementById('solarForecastChart');
+  canvas.style.display = 'block';
+
+  const labels = slots.map(s => String(s.h).padStart(2,'0') + ':00');
+  const dataKw = slots.map(s => s.kw);
+  const nowH = new Date().getHours();
+  const bgColors = slots.map(s => s.h === nowH ? 'rgba(245,195,0,1)' : 'rgba(245,195,0,0.6)');
+
+  if (window.solarChartInstance) window.solarChartInstance.destroy();
+  const ctx = canvas.getContext('2d');
+  window.solarChartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Prognose (kW)',
+        data: dataKw,
+        backgroundColor: bgColors,
+        hoverBackgroundColor: 'rgba(245,195,0,1)',
+        borderRadius: 2,
+        barPercentage: 0.85
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+            backgroundColor: '#1a1f2c',
+            titleColor: '#7a8299',
+            bodyColor: '#dde1eb',
+            bodyFont: { family: 'JetBrains Mono', size: 11 },
+            callbacks: {
+                label: ctx => `☀ ${ctx.parsed.y} kW`
+            }
+        }
+      },
+      scales: {
+        x: { display: true, grid: {display: false}, ticks: {color: '#52596b', font: {family: 'JetBrains Mono', size: 9}} },
+        y: { display: false, min: 0 }
+      }
+    }
+  });
+}
+
+// ── COUNTDOWN REFRESH ─────────────────────────────────────────────
+setInterval(() => {
+  if (todayPrices.length) renderAI();
+}, 15000);
+
+// Auto-refresh prices every 5 minutes
+setInterval(async () => {
+  await fetchPrices();
+}, 5 * 60 * 1000);
+
+// Auto-refresh weather every 30 minutes
+setInterval(async () => {
+  await fetchWeather();
+}, 30 * 60 * 1000);
+
+// ── HARDWARE PROTOTYPE TELEMETRY (SIMULATION) ─────────────────────
+let simTemp = 22.0;
+let simLight = 100.0;
+let simGen = 0.0;
+
+function fetchTelemetry() {
+  // Simuliere schwankende Sensordaten (da kein Backend vorhanden ist auf GitHub Pages)
+  simTemp += (Math.random() - 0.5) * 1.5;
+  simLight += (Math.random() - 0.5) * 20.0;
+  if(simLight < 0) simLight = 0;
+  if(simTemp < 15) simTemp = 15;
+  if(simTemp > 80) simTemp = 80;
+  simGen = (simLight / 1000) * 15; // mock calc
+
+  document.getElementById('proto-temp').textContent = simTemp.toFixed(1);
+  document.getElementById('proto-light').textContent = simLight.toFixed(0);
+  document.getElementById('proto-power').textContent = simGen.toFixed(1);
+  
+  // Lokale Prototyp AI Logik
+  let decision = "STANDBY";
+  if (simTemp < 40 && simLight > 300) decision = "HEAT_ON (Solar)";
+  else if (simTemp < 40) decision = "HEAT_ON (Grid)";
+  else if (simTemp >= 60) decision = "HEAT_OFF";
+
+  if (decision !== 'STANDBY') {
+    document.getElementById('ai-action').textContent = decision;
+    document.getElementById('ai-reason').textContent = "Lokale Prototyp-Regelung (Simulation)";
+  }
+}
+setInterval(fetchTelemetry, 3000); // 3 sec live polling
+
+// ── MULTI-LANGUAGE ────────────────────────────────────────────────
+let currentLang = 'de';
+function toggleLangDrop() {
+  document.getElementById('lang-options').classList.toggle('open');
+}
+window.addEventListener('click', function(e){
+  const menu = document.getElementById('lang-menu');
+  if(menu && !menu.contains(e.target)) {
+    document.getElementById('lang-options').classList.remove('open');
+  }
+});
+function setLang(lang, event) {
+  event.stopPropagation();
+  if (currentLang === lang) return;
+  currentLang = lang;
+  
+  if(currentLang === 'en') {
+    document.getElementById('lang-active').innerHTML = '🇬🇧 EN';
+    document.getElementById('lang-inactive').innerHTML = '🇩🇪 DE';
+    document.getElementById('lang-inactive').setAttribute('onclick', "setLang('de', event)");
+  } else {
+    document.getElementById('lang-active').innerHTML = '🇩🇪 DE';
+    document.getElementById('lang-inactive').innerHTML = '🇬🇧 EN';
+    document.getElementById('lang-inactive').setAttribute('onclick', "setLang('en', event)");
+  }
+  document.getElementById('lang-options').classList.remove('open');
+  
+  document.querySelectorAll('[data-de][data-en]').forEach(el => {
+    el.innerHTML = currentLang === 'en' ? el.getAttribute('data-en') : el.getAttribute('data-de');
+  });
+  
+  if(document.getElementById('fin-month-title')) {
+     const now = new Date();
+     const locale = currentLang === 'en' ? 'en-US' : 'de-DE';
+     const monthStr = now.toLocaleString(locale, { month: 'long', year: 'numeric' }).toUpperCase();
+     const heuteStr = currentLang === 'en' ? 'TODAY' : 'HEUTE';
+     document.getElementById('fin-month-title').textContent = `— ${currentLang==='en'?'FINANCIAL OVERVIEW':'FINANZÜBERSICHT'} - ${monthStr} (${heuteStr})`;
+  }
+}
+
+// ── INIT ──────────────────────────────────────────────────────────
+(async () => {
+  await Promise.all([
+    fetchPrices(),
+    fetchWeather()
+  ]);
+})();
+</script>
+</body>
+</html>

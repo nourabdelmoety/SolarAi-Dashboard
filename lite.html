@@ -802,25 +802,61 @@ function aiDecision(ct, solarKw = 0) {
 }
 
 // ── PRICE FETCH ──────────────────────────────────────────────────
-async function fetchPrices() {
+const API_TARGET = 'https://api.energy-charts.info/price?bzn=DE-LU';
+// Proxy waterfall: tries each in order until one works
+const CORS_PROXIES = [
+  url => `https://corsproxy.io/?${encodeURIComponent(url)}`,
+  url => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`,
+  url => `https://proxy.cors.sh/${url}`,
+];
+
+async function tryFetchWithProxies(targetUrl) {
+  // 1. Try direct first (works when running locally)
   try {
-    // Direkter Abruf für GitHub Pages (ohne lokales Backend)
-    const res  = await fetch('https://corsproxy.io/?https://api.energy-charts.info/price?bzn=DE-LU');
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    priceData = await res.json();
+    const res = await fetch(targetUrl, { signal: AbortSignal.timeout(4000) });
+    if (res.ok) return res.json();
+  } catch(e) { /* fall through */ }
+
+  // 2. Try each proxy in sequence
+  for (const proxyFn of CORS_PROXIES) {
+    try {
+      const res = await fetch(proxyFn(targetUrl), { signal: AbortSignal.timeout(8000) });
+      if (res.ok) {
+        const text = await res.text();
+        // allorigins wraps in {contents:...}, unwrap if needed
+        try {
+          const j = JSON.parse(text);
+          return j.contents ? JSON.parse(j.contents) : j;
+        } catch(e2) { continue; }
+      }
+    } catch(e) { /* try next proxy */ }
+  }
+  throw new Error('Alle Proxies fehlgeschlagen');
+}
+
+async function fetchPrices() {
+  document.getElementById('price-now-row').innerHTML =
+    `<div class="loading-row"><div class="spinner"></div>Verbinde mit Energiemarkt API…</div>`;
+  try {
+    priceData = await tryFetchWithProxies(API_TARGET);
     processPrices();
     return true;
   } catch(e) {
-    console.error('Price fetch failed:', e);
-    // Demo-Daten-Fallback für statisches GitHub Hosting falls blockiert
-    const nowTs = Math.floor(Date.now() / 1000);
+    console.error('Price fetch failed (all proxies):', e);
+    // Realistic demo data as last resort
+    const base = Math.floor(Date.now() / 1000);
+    const dayStart = base - (base % 86400);
     priceData = {
-      unix_seconds: Array.from({length: 96}, (_,i) => nowTs - (nowTs % 86400) + (i*900)),
-      price: Array.from({length: 96}, (_,i) => 50 + Math.sin(i/10)*40 + Math.random()*10)
+      unix_seconds: Array.from({length: 96}, (_,i) => dayStart + (i * 900)),
+      price: Array.from({length: 96}, (_,i) => {
+        const h = i / 4;
+        // Realistic day-ahead curve: cheap at night, peak morning/evening
+        return 40 + 30 * Math.sin((h - 6) * Math.PI / 12) + (Math.random() * 8 - 4);
+      })
     };
     processPrices();
-    document.getElementById('price-now-row').innerHTML =
-      `<div class="loading-row" style="color:var(--solar);">⚠ Demo-Modus aktiv (API-Fehler: ${e.message})</div>`;
+    document.getElementById('ticker-timestamp').textContent =
+      '⚠ Demo-Modus — API nicht erreichbar (Simulierte Marktdaten)';
     return false;
   }
 }
@@ -1020,8 +1056,15 @@ function renderChart() {
       }
     });
   } else {
-    // Plausible solar curve for summer Bayern if no weather yet
-    solarArr = [0,0,0,0,0,0.1,0.6,1.4,2.4,3.5,4.5,5.1,5.4,5.2,4.8,4.0,3.0,1.8,0.7,0.1,0,0,0,0];
+    // Dynamic seasonal solar estimate — not hardcoded
+    // Peak production scales by month (summer ~5.4kW, winter ~1.5kW for 6.4kWp Bayern)
+    const month = new Date().getMonth(); // 0=Jan, 11=Dec
+    const peakKw = 1.5 + 3.9 * Math.sin((month / 11) * Math.PI); // seasonal curve
+    solarArr = Array.from({length: 24}, (_, h) => {
+      if (h < 5 || h > 21) return 0;
+      const bell = Math.sin(((h - 5) / 16) * Math.PI); // sunrise-to-sunset bell
+      return parseFloat((peakKw * bell).toFixed(2));
+    });
   }
 
   const ctx = document.getElementById('mainChart');

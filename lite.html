@@ -805,7 +805,7 @@ function aiDecision(ct, solarKw = 0) {
 async function fetchPrices() {
   try {
     // Direkter Abruf für GitHub Pages (ohne lokales Backend)
-    const res  = await fetch('https://api.energy-charts.info/price?bzn=DE-LU');
+    const res  = await fetch('https://corsproxy.io/?https://api.energy-charts.info/price?bzn=DE-LU');
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     priceData = await res.json();
     processPrices();
